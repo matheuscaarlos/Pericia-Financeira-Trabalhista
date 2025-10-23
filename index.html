@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
         // --- Configurações e Inicialização do Firebase (Obrigatório) ---
-        // ESTE É O MECANISMO DE PERSISTÊNCIA: Usamos o Firestore, um banco de dados em nuvem.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged 
@@ -39,6 +38,9 @@
             userId: null,
             isAuthReady: false
         };
+
+        // Flag para garantir que renderização e loading só sejam chamados uma vez
+        let isInitialAuthResolved = false; // <<< FLAG DE CORREÇÃO
 
         // Estado temporário para o formulário de Tags
         const tempTags = {
@@ -331,11 +333,11 @@
                 tagsContainer.innerHTML = '';
                 tempTags.current.forEach((tag, index) => {
                     const tagPill = document.createElement('span');
-                    // COR: bg-indigo-100 para a pílula e text-indigo-800
-                    tagPill.className = 'flex items-center bg-indigo-100 text-indigo-800 text-sm font-medium px-3 py-1 rounded-full shadow-sm';
+                    // COR: bg-teal-100 para a pílula e text-teal-800
+                    tagPill.className = 'flex items-center bg-teal-100 text-teal-800 text-sm font-medium px-3 py-1 rounded-full shadow-sm';
                     tagPill.innerHTML = `
                         ${tag}
-                        <button type="button" data-index="${index}" class="ml-2 text-indigo-500 hover:text-indigo-700 focus:outline-none remove-tag-btn">
+                        <button type="button" data-index="${index}" class="ml-2 text-teal-500 hover:text-teal-700 focus:outline-none remove-tag-btn">
                             &times;
                         </button>
                     `;
@@ -406,25 +408,29 @@
             mainContent.innerHTML = `
                 <!-- Melhoria: Sombra mais nítida e transição suave -->
                 <div class="bg-white p-8 rounded-xl shadow-xl hover:shadow-2xl transition duration-300">
-                    <h2 class="text-3xl font-extrabold text-indigo-700 mb-6 border-b-2 border-indigo-200 pb-3">
+                    <!-- COR: text-teal-700 e border-teal-200 -->
+                    <h2 class="text-3xl font-extrabold text-teal-700 mb-6 border-b-2 border-teal-200 pb-3">
                         ${isEditing ? 'Editar Processo: ' + process.caseNumber : 'Novo Processo'}
                     </h2>
                     <form id="process-form" class="space-y-6">
                         
                         <div>
                             <label for="court" class="block text-sm font-semibold text-gray-700 mb-1">Tribunal/Vara:</label>
-                            <input type="text" id="court" name="court" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150" value="${isEditing ? process.court : ''}">
+                            <!-- COR: focus:border-teal-500 -->
+                            <input type="text" id="court" name="court" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-3 bg-gray-50 transition duration-150" value="${isEditing ? process.court : ''}">
                         </div>
                         
                         <div>
                             <label for="caseNumber" class="block text-sm font-semibold text-gray-700 mb-1">Número do Processo:</label>
-                            <input type="text" id="caseNumber" name="caseNumber" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150" value="${isEditing ? process.caseNumber : ''}" ${isEditing ? 'disabled' : ''}>
+                            <!-- COR: focus:border-teal-500 -->
+                            <input type="text" id="caseNumber" name="caseNumber" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-3 bg-gray-50 transition duration-150" value="${isEditing ? process.caseNumber : ''}" ${isEditing ? 'disabled' : ''}>
                             ${isEditing ? '<p class="text-xs text-gray-400 mt-1">O número do processo não pode ser alterado.</p>' : ''}
                         </div>
 
                         <div>
                             <label for="clientName" class="block text-sm font-semibold text-gray-700 mb-1">Nome do Cliente:</label>
-                            <input type="text" id="clientName" name="clientName" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150" value="${isEditing ? process.clientName : ''}">
+                            <!-- COR: focus:border-teal-500 -->
+                            <input type="text" id="clientName" name="clientName" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-3 bg-gray-50 transition duration-150" value="${isEditing ? process.clientName : ''}">
                         </div>
 
                         <!-- CAMPO DE TAGS -->
@@ -433,20 +439,23 @@
                             <div id="tags-container" class="mt-1 flex flex-wrap gap-2 p-3 bg-gray-100 border border-gray-300 rounded-lg min-h-[44px]">
                                 <!-- Pílulas de tags renderizadas por JS -->
                             </div>
-                            <input type="text" id="tag-input" placeholder="Ex: Urgente, Contábil, Complexo..." class="mt-2 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-white transition duration-150">
+                            <!-- COR: focus:border-teal-500 -->
+                            <input type="text" id="tag-input" placeholder="Ex: Urgente, Contábil, Complexo..." class="mt-2 block w-full rounded-lg border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-3 bg-white transition duration-150">
                         </div>
                         <!-- FIM DO CAMPO DE TAGS -->
 
 
                         <div>
                             <label for="description" class="block text-sm font-semibold text-gray-700 mb-1">Descrição/Resumo:</label>
-                            <textarea id="description" name="description" rows="3" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150">${isEditing ? process.description || '' : ''}</textarea>
+                            <!-- COR: focus:border-teal-500 -->
+                            <textarea id="description" name="description" rows="3" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-3 bg-gray-50 transition duration-150">${isEditing ? process.description || '' : ''}</textarea>
                         </div>
                         
                         ${isEditing ? `
                             <div>
                                 <label for="status" class="block text-sm font-semibold text-gray-700 mb-1">Status:</label>
-                                <select id="status" name="status" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150">
+                                <!-- COR: focus:border-teal-500 -->
+                                <select id="status" name="status" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-3 bg-gray-50 transition duration-150">
                                     <option value="Pendente" ${process.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
                                     <option value="Em Andamento" ${process.status === 'Em Andamento' ? 'selected' : ''}>Em Andamento</option>
                                     <option value="Concluído" ${process.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
@@ -460,9 +469,9 @@
                             <button type="button" id="cancel-button" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white shadow-md hover:bg-gray-100 hover:shadow-lg transition duration-200">
                                 Cancelar
                             </button>
-                            <!-- COR: bg-indigo-600 -->
+                            <!-- COR: bg-teal-600 e hover:bg-teal-700 -->
                             <!-- Melhoria: Botão Primário mais proeminente -->
-                            <button type="submit" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl transition duration-200 transform hover:scale-[1.01]">
+                            <button type="submit" class="px-6 py-3 bg-teal-600 text-white font-bold rounded-lg shadow-lg hover:bg-teal-700 hover:shadow-xl transition duration-200 transform hover:scale-[1.01]">
                                 ${isEditing ? 'Salvar Alterações' : 'Criar Processo'}
                             </button>
                         </div>
@@ -515,10 +524,10 @@
         function renderProcessList() {
             mainContent.innerHTML = `
                 <div class="flex justify-between items-center mb-6 border-b pb-4">
-                    <!-- COR: text-indigo-700 -->
-                    <h2 class="text-3xl font-extrabold text-indigo-700">Lista de Processos</h2>
-                    <!-- COR: bg-indigo-600 -->
-                    <button id="new-process-button" class="flex items-center bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.01]">
+                    <!-- COR: text-teal-700 -->
+                    <h2 class="text-3xl font-extrabold text-teal-700">Lista de Processos</h2>
+                    <!-- COR: bg-teal-600 e hover:bg-teal-700 -->
+                    <button id="new-process-button" class="flex items-center bg-teal-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg hover:bg-teal-700 transition duration-200 transform hover:scale-[1.01]">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                         Novo Processo
                     </button>
@@ -539,8 +548,8 @@
             if (state.processes.length === 0) {
                 listItemsContainer.innerHTML = `
                     <div class="text-center p-10 bg-white rounded-xl shadow-lg text-gray-500 border border-gray-200">
-                        <!-- COR: text-indigo-500 -->
-                        <svg class="w-12 h-12 mx-auto mb-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <!-- COR: text-teal-500 -->
+                        <svg class="w-12 h-12 mx-auto mb-3 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         <p class="font-bold text-lg">Nenhum processo encontrado.</p>
                         <p class="text-sm">Clique em "Novo Processo" para começar a gerenciar suas perícias.</p>
                     </div>
@@ -558,13 +567,14 @@
 
                 // Renderiza as tags
                 const tagsHtml = (process.tags || [])
-                    .map(tag => `<span class="inline-block bg-slate-200 text-slate-700 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">${tag}</span>`)
+                    // COR: Cor neutra para tags ou soft teal
+                    .map(tag => `<span class="inline-block bg-teal-100 text-teal-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">${tag}</span>`)
                     .join('');
 
                 const processItem = document.createElement('div');
                 // Melhoria: Sombra mais suave e animação de hover mais elegante
-                // COR: border-indigo-400
-                processItem.className = 'process-item p-5 bg-white rounded-xl shadow-lg border-t-4 border-indigo-400 hover:shadow-xl transition duration-200 cursor-pointer transform hover:translate-y-[-2px]';
+                // COR: border-teal-400
+                processItem.className = 'process-item p-5 bg-white rounded-xl shadow-lg border-t-4 border-teal-400 hover:shadow-xl transition duration-200 cursor-pointer transform hover:translate-y-[-2px]';
                 processItem.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div class="flex-1 min-w-0">
@@ -597,8 +607,8 @@
             mainContent.innerHTML = `
                 <!-- Melhoria: Sombra mais nítida e transição suave -->
                 <div class="bg-white p-8 rounded-xl shadow-xl hover:shadow-2xl transition duration-300">
-                    <!-- COR: text-indigo-700 -->
-                    <h2 class="text-3xl font-extrabold text-indigo-700 mb-6 border-b-2 border-indigo-200 pb-3">
+                    <!-- COR: text-teal-700 e border-teal-200 -->
+                    <h2 class="text-3xl font-extrabold text-teal-700 mb-6 border-b-2 border-teal-200 pb-3">
                         Meu Perfil Profissional
                     </h2>
                     <form id="profile-form" class="space-y-6">
@@ -606,20 +616,20 @@
                         
                         <div>
                             <label for="profileName" class="block text-sm font-semibold text-gray-700 mb-1">Nome Completo (ou Social):</label>
-                            <!-- COR: focus:border-indigo-500 -->
-                            <input type="text" id="profileName" name="name" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150" value="${profile.name || ''}">
+                            <!-- COR: focus:border-teal-500 -->
+                            <input type="text" id="profileName" name="name" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-3 bg-gray-50 transition duration-150" value="${profile.name || ''}">
                         </div>
                         
                         <div>
                             <label for="registrationNumber" class="block text-sm font-semibold text-gray-700 mb-1">Registro Profissional (Ex: CRA, CRC, CREA, etc.):</label>
-                            <!-- COR: focus:border-indigo-500 -->
-                            <input type="text" id="registrationNumber" name="registrationNumber" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150" value="${profile.registrationNumber || ''}">
+                            <!-- COR: focus:border-teal-500 -->
+                            <input type="text" id="registrationNumber" name="registrationNumber" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-3 bg-gray-50 transition duration-150" value="${profile.registrationNumber || ''}">
                             <p class="text-xs text-gray-400 mt-1">Opcional. Usado para identificação no seu fluxo de trabalho.</p>
                         </div>
 
                         <div class="flex justify-end pt-4">
-                            <!-- COR: bg-indigo-600 -->
-                            <button type="submit" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl transition duration-200 transform hover:scale-[1.01]">
+                            <!-- COR: bg-teal-600 e hover:bg-teal-700 -->
+                            <button type="submit" class="px-6 py-3 bg-teal-600 text-white font-bold rounded-lg shadow-lg hover:bg-teal-700 hover:shadow-xl transition duration-200 transform hover:scale-[1.01]">
                                 Salvar Perfil
                             </button>
                         </div>
@@ -642,11 +652,11 @@
             const concluido = state.processes.filter(p => p.status === 'Concluído').length;
 
             mainContent.innerHTML = `
-                <!-- COR: text-indigo-700 -->
-                <h2 class="text-3xl font-extrabold text-indigo-700 mb-8">Dashboard de Perícias</h2>
+                <!-- COR: text-teal-700 -->
+                <h2 class="text-3xl font-extrabold text-teal-700 mb-8">Dashboard de Perícias</h2>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <!-- COR: bg-indigo-100 e border-indigo-400 -->
-                    ${renderStatCard('Total de Processos', total, 'bg-indigo-100 text-indigo-800', 'border-indigo-400')}
+                    <!-- COR: bg-teal-100 e border-teal-400 -->
+                    ${renderStatCard('Total de Processos', total, 'bg-teal-100 text-teal-800', 'border-teal-400')}
                     ${renderStatCard('Pendentes', pendente, 'bg-red-100 text-red-800', 'border-red-400')}
                     ${renderStatCard('Em Andamento', emAndamento, 'bg-yellow-100 text-yellow-800', 'border-yellow-400')}
                     ${renderStatCard('Concluídos', concluido, 'bg-green-100 text-green-800', 'border-green-400')}
@@ -655,8 +665,8 @@
                 <div class="mt-10 p-6 bg-white rounded-xl shadow-xl hover:shadow-2xl transition duration-300">
                     <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Ações Rápidas</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <!-- COR: bg-indigo-600 -->
-                        <button id="dash-new-process" class="flex items-center justify-center p-4 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.01]">
+                        <!-- COR: bg-teal-600 e hover:bg-teal-700 -->
+                        <button id="dash-new-process" class="flex items-center justify-center p-4 bg-teal-600 text-white font-bold rounded-lg shadow-lg hover:bg-teal-700 transition duration-200 transform hover:scale-[1.01]">
                             <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Adicionar Novo Processo
                         </button>
@@ -684,6 +694,7 @@
             return `
                 <div class="bg-white p-6 rounded-xl shadow-xl border-l-4 ${borderColorClass} transition duration-300 transform hover:scale-[1.02] hover:shadow-2xl">
                     <p class="text-sm font-medium text-gray-500">${title}</p>
+                    <!-- Garante que a cor do texto do valor seja consistente com o card -->
                     <p class="mt-1 text-4xl font-extrabold ${bgColorClass.split(' ')[1].replace('text-', 'text-')}">${value}</p>
                 </div>
             `;
@@ -692,15 +703,15 @@
         // Função de Roteamento (Main Renderer)
         function renderView() {
             document.querySelectorAll('.nav-button').forEach(btn => 
-                // COR: bg-indigo-700
-                btn.classList.remove('bg-indigo-700', 'text-white')
+                // COR: bg-teal-700
+                btn.classList.remove('bg-teal-700', 'text-white')
             );
 
             const currentNavView = state.currentView === 'newProcess' || state.currentView === 'editProcess' ? 'processList' : state.currentView;
             const activeNavButton = document.querySelector(`[data-view='${currentNavView}']`);
             if (activeNavButton) {
-                // COR: bg-indigo-700
-                activeNavButton.classList.add('bg-indigo-700', 'text-white');
+                // COR: bg-teal-700
+                activeNavButton.classList.add('bg-teal-700', 'text-white');
             }
             
             mainContent.classList.remove('fade-in');
@@ -736,33 +747,39 @@
         }
 
         // --- Configuração de Autenticação e Inicialização ---
-
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 state.userId = user.uid;
                 state.isAuthReady = true;
-                console.log("Usuário autenticado:", state.userId);
                 
                 loadProfile(); 
                 setupProcessListener(); 
 
-            } else {
-                if (initialAuthToken) {
-                    try {
+                // 3. Primeira renderização após autenticação bem-sucedida
+                if (!isInitialAuthResolved) {
+                    renderView();
+                    toggleLoading(false);
+                    isInitialAuthResolved = true;
+                }
+
+            } else if (!isInitialAuthResolved) {
+                // Se não está logado E é a primeira vez (tentativa inicial)
+                try {
+                    if (initialAuthToken) {
                         await signInWithCustomToken(auth, initialAuthToken);
-                    } catch (error) {
-                        console.error("Erro ao fazer login com token customizado:", error);
-                        try {
-                            await signInAnonymously(auth);
-                        } catch (anonError) {
-                            console.error("Erro ao fazer login anônimo:", anonError);
-                        }
-                    }
-                } else {
-                    try {
+                    } else {
                         await signInAnonymously(auth);
-                    } catch (error) {
-                        console.error("Erro ao fazer login anônimo:", error);
+                    }
+                    // O novo estado de user irá disparar o listener novamente (sucesso)
+                } catch (error) {
+                    console.error("Erro no login inicial (token ou anônimo):", error);
+                    // Se falhar e não tivermos user, ainda precisamos renderizar e parar o loading
+                    if (!isInitialAuthResolved) {
+                         // Mesmo com falha, o app deve iniciar (sem acesso a dados privados)
+                         state.isAuthReady = true; 
+                         renderView(); 
+                         toggleLoading(false);
+                         isInitialAuthResolved = true;
                     }
                 }
             }
@@ -771,6 +788,10 @@
 
         // --- Inicialização da UI (eventos de navegação e PIX) ---
         window.onload = () => {
+            // 1. Mostrar o indicador de carregamento imediatamente
+            toggleLoading(true); 
+
+            // 2. Configurar botões de navegação (independente do Firebase)
             document.querySelectorAll('.nav-button').forEach(button => {
                 button.addEventListener('click', () => {
                     const view = button.getAttribute('data-view');
@@ -780,6 +801,7 @@
                 });
             });
 
+            // 3. Configurar botão PIX (independente do Firebase)
             const pixButton = document.getElementById('pix-copy-button');
             if (pixButton) {
                 pixButton.addEventListener('click', () => {
@@ -789,7 +811,8 @@
                 });
             }
 
-            renderView(); 
+            // O onAuthStateChanged (acima) será disparado e chamará renderView() e toggleLoading(false) 
+            // assim que a autenticação estiver pronta.
         };
 
     </script>
@@ -851,9 +874,9 @@
     <div id="app-wrapper">
         <!-- Barra Lateral de Navegação (Slate-800 - Design Limpo) -->
         <div class="fixed top-0 left-0 h-full w-64 bg-slate-800 shadow-2xl p-6 flex flex-col z-30">
-            <!-- COR: text-indigo-400 -->
+            <!-- COR: text-teal-400 (cor de destaque profissional) -->
             <div class="text-3xl font-extrabold text-white mb-10 border-b border-slate-700 pb-3">
-                <svg class="inline w-7 h-7 mr-2 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                <svg class="inline w-7 h-7 mr-2 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 Gerenciador Pro
             </div>
             
@@ -878,12 +901,12 @@
                 <p id="user-name-display" class="text-base font-semibold text-white">Carregando...</p>
                 <p class="text-xs text-slate-400 mt-1">ID Completo:</p>
                 <p id="user-id-display" class="text-xs text-slate-400 break-all">Carregando...</p>
-                <!-- COR: text-indigo-400 -->
-                <p class="text-xs text-indigo-400 mt-2">Dados salvos em nuvem (Firestore)</p>
+                <!-- COR: text-teal-400 -->
+                <p class="text-xs text-teal-400 mt-2">Dados salvos em nuvem (Firestore)</p>
                 <!-- CAMPO DE DESTAQUE DO AUTOR -->
                 <div class="mt-4 pt-3 border-t border-slate-700">
-                    <!-- COR: text-indigo-300 -->
-                    <p class="text-xs font-medium text-indigo-300">Desenvolvido por Matheus Carlos</p>
+                    <!-- COR: text-teal-300 -->
+                    <p class="text-xs font-medium text-teal-300">Desenvolvido por Matheus Carlos</p>
                 </div>
             </div>
         </div>
@@ -891,7 +914,8 @@
         <!-- Conteúdo Principal -->
         <div id="main-app-content" class="ml-64 p-8">
             <!-- Header Profissional -->
-            <header class="mb-10 p-5 bg-white rounded-xl shadow-lg border-t-4 border-indigo-500">
+            <!-- COR: border-teal-500 -->
+            <header class="mb-10 p-5 bg-white rounded-xl shadow-lg border-t-4 border-teal-500">
                 <h1 class="text-4xl font-extrabold text-slate-800">Gerenciamento de Perícias</h1>
                 <p class="text-gray-500 mt-2 text-lg">Acompanhe seus processos e otimize seu fluxo de trabalho forense.</p>
             </header>
@@ -899,13 +923,13 @@
             <!-- Indicador de Carregamento -->
             <div id="loading-indicator" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white p-6 rounded-xl shadow-2xl flex items-center space-x-3">
-                    <!-- COR: text-indigo-600 -->
-                    <svg class="animate-spin h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <!-- COR: text-teal-600 -->
+                    <svg class="animate-spin h-6 w-6 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <!-- COR: text-indigo-600 -->
-                    <span class="text-indigo-600 font-semibold">Carregando dados...</span>
+                    <!-- COR: text-teal-600 -->
+                    <span class="text-teal-600 font-semibold">Carregando dados...</span>
                 </div>
             </div>
 
@@ -924,8 +948,8 @@
                     <div class="flex justify-end space-x-3">
                         <!-- Melhoria: Botão Cancelar com sombra e hover mais profissional -->
                         <button id="modal-cancel-button" class="hidden px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 shadow-sm transition duration-150">Cancelar</button>
-                        <!-- COR: bg-indigo-600 -->
-                        <button id="modal-confirm-button" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 shadow-md transition duration-150">OK</button>
+                        <!-- COR: bg-teal-600 -->
+                        <button id="modal-confirm-button" class="px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 shadow-md transition duration-150">OK</button>
                     </div>
                 </div>
             </div>
