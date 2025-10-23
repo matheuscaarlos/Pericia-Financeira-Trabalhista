@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciador de Perícias - Clean & Minimalist (Responsivo)</title>
+    <title>Gerenciador de Perícias - Funcional</title>
+    <!-- Carregamento do Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
         // --- Configurações e Inicialização do Firebase (Obrigatório) ---
+        // Importações necessárias do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged 
@@ -22,35 +24,33 @@
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         // Inicializa o Firebase e Firestore
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
-        // Define o nível de log para debug
-        setLogLevel('debug');
+        let app, db, auth;
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            setLogLevel('debug'); // Ativa logs de debug do Firebase
+        } catch (e) {
+            console.error("Erro na inicialização do Firebase:", e);
+        }
 
         // Estado global da aplicação
         const state = {
             processes: [],
             userProfile: { name: '', registrationNumber: '' },
             currentView: 'dashboard',
-            currentProcess: null,
+            currentProcess: null, // Objeto de processo sendo editado
             userId: null,
             isAuthReady: false
         };
-
-        // Flag para garantir que renderização e loading só sejam chamados uma vez
-        let isInitialAuthResolved = false; 
 
         // Estado temporário para o formulário de Tags
         const tempTags = {
             current: []
         };
 
-
-        // Elementos da UI
+        // --- Referências de Elementos da UI ---
         const mainWrapper = document.getElementById('app-wrapper');
-        const processListContainer = document.getElementById('process-list-container');
         const mainContent = document.getElementById('main-content');
         const userNameDisplay = document.getElementById('user-name-display');
         const userIdDisplay = document.getElementById('user-id-display');
@@ -67,8 +67,9 @@
 
         // Função para mostrar/esconder o menu mobile
         window.toggleMobileMenu = (forceState = null) => {
+            if (!sidebar) return; // Garante que a sidebar existe
             const overlay = document.getElementById('mobile-overlay');
-            // Verifica a visibilidade da sidebar (lg:hidden garante que só funciona em mobile)
+            
             const isMobile = window.innerWidth < 1024;
             if (!isMobile) return; 
 
@@ -87,9 +88,8 @@
             }
         }
 
-        // Função para fechar o menu mobile ao clicar em um link
         function closeMobileMenuIfOpen() {
-            if (window.innerWidth < 1024) { // 1024px é o breakpoint 'lg' do Tailwind
+            if (window.innerWidth < 1024) { 
                 window.toggleMobileMenu(false);
             }
         }
@@ -120,20 +120,32 @@
             setTimeout(() => modalConfirmButton.focus(), 100); 
         }
 
-        // Função para copiar texto para a área de transferência (PIX)
+        // Função para copiar texto (PIX)
         function copyToClipboard(text, successMessage) {
             try {
-                const tempInput = document.createElement('textarea');
-                tempInput.value = text;
-                tempInput.style.position = 'fixed'; 
-                tempInput.style.opacity = '0';
-                document.body.appendChild(tempInput);
-                
-                tempInput.select();
-                document.execCommand('copy'); 
-                
-                document.body.removeChild(tempInput);
-                showModal("PIX Copiado!", successMessage, "Entendi");
+                // Tenta usar a API moderna primeiro
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showModal("PIX Copiado!", successMessage, "Entendi");
+                    }).catch(err => {
+                         // Fallback se falhar
+                        throw new Error("Falha ao usar navigator.clipboard");
+                    });
+                } else {
+                    // Fallback para document.execCommand (mais compatível em iFrames)
+                    const tempInput = document.createElement('textarea');
+                    tempInput.value = text;
+                    tempInput.style.position = 'fixed'; 
+                    tempInput.style.opacity = '0';
+                    document.body.appendChild(tempInput);
+                    
+                    tempInput.select();
+                    document.execCommand('copy'); 
+                    
+                    document.body.removeChild(tempInput);
+                    showModal("PIX Copiado!", successMessage, "Entendi");
+                }
+
 
             } catch (err) {
                 console.error('Falha ao copiar:', err);
@@ -160,10 +172,7 @@
         // --- Gerenciamento de Perfil (Firestore) ---
 
         function getProfileDocRef() {
-            if (!state.userId) {
-                console.warn("UserID não disponível para perfil. Aguardando autenticação.");
-                return null;
-            }
+            if (!state.userId) return null;
             // Path: /artifacts/{appId}/users/{userId}/profile/userProfile
             return doc(db, `artifacts/${appId}/users/${state.userId}/profile/userProfile`);
         }
@@ -181,11 +190,13 @@
                     state.userProfile = { name: '', registrationNumber: '' };
                 }
                 
+                // Atualiza a UI da Sidebar
                 userNameDisplay.textContent = state.userProfile.name || 'Usuário Anônimo';
                 if (userIdDisplay) {
                     userIdDisplay.textContent = state.userId;
                 }
 
+                // Se estiver na view de perfil, renderiza novamente
                 if (state.currentView === 'profile') {
                     renderView();
                 }
@@ -213,10 +224,7 @@
         // --- Gerenciamento de Dados de Processos (Firestore) ---
 
         function getProcessCollectionRef() {
-            if (!state.userId) {
-                console.warn("UserID não disponível para processos. Aguardando autenticação.");
-                return null;
-            }
+            if (!state.userId) return null;
             // Regra de Segurança: /artifacts/{appId}/users/{userId}/processes
             return collection(db, `artifacts/${appId}/users/${state.userId}/processes`);
         }
@@ -228,7 +236,7 @@
             const processesRef = getProcessCollectionRef();
             if (!processesRef) return;
 
-            const q = query(processesRef);
+            const q = query(processesRef); // Sem orderBy para evitar a necessidade de índices
 
             onSnapshot(q, (snapshot) => {
                 const processes = [];
@@ -248,10 +256,13 @@
                 });
 
                 state.processes = processes;
-                renderView();
+                // Renderiza apenas se a view atual depender dos dados (lista ou dashboard)
+                if (state.currentView === 'processList' || state.currentView === 'dashboard') {
+                    renderView();
+                }
             }, (error) => {
                 console.error("Erro ao escutar processos:", error);
-                showModal("Erro de Conexão", "Não foi possível carregar a lista de processos em tempo real. Verifique sua conexão.", "Entendi");
+                showModal("Erro de Conexão", "Não foi possível carregar a lista de processos em tempo real.", "Entendi");
             });
         }
 
@@ -349,18 +360,18 @@
 
         // --- Funções de Renderização de Views ---
 
-        // Função para configurar a entrada de tags
         function setupTagsInput(initialTags = []) {
             const tagsContainer = document.getElementById('tags-container');
             const tagInput = document.getElementById('tag-input');
             
-            tempTags.current = [...initialTags];
+            // GARANTE que o estado temporário reflita as tags atuais do processo
+            tempTags.current = [...initialTags]; 
 
             const renderTags = () => {
+                if (!tagsContainer) return;
                 tagsContainer.innerHTML = '';
                 tempTags.current.forEach((tag, index) => {
                     const tagPill = document.createElement('span');
-                    // Estilo Clean & Minimalist
                     tagPill.className = 'flex items-center bg-gray-100 text-gray-700 text-sm font-medium px-3 py-1 rounded-full shadow-sm border border-gray-200';
                     tagPill.innerHTML = `
                         ${tag}
@@ -370,7 +381,6 @@
                     `;
                     tagsContainer.appendChild(tagPill);
                 });
-                // Adiciona padding ao container se houver tags para melhor visualização
                 tagsContainer.classList.toggle('p-2', tempTags.current.length > 0);
             };
 
@@ -379,46 +389,48 @@
                 if (tag && !tempTags.current.includes(tag)) {
                     tempTags.current.push(tag);
                     renderTags();
-                    tagInput.value = ''; 
+                    if (tagInput) tagInput.value = ''; 
                 }
             };
 
-            tagsContainer.addEventListener('click', (e) => {
-                if (e.target.classList.contains('remove-tag-btn')) {
-                    const index = parseInt(e.target.getAttribute('data-index'));
-                    tempTags.current.splice(index, 1);
-                    renderTags();
-                }
-            });
+            if (tagsContainer) {
+                tagsContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('remove-tag-btn')) {
+                        const index = parseInt(e.target.getAttribute('data-index'));
+                        tempTags.current.splice(index, 1);
+                        renderTags();
+                    }
+                });
+            }
 
-            tagInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault(); 
+            if (tagInput) {
+                tagInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault(); 
+                        addTag(tagInput.value);
+                    }
+                    if (e.key === 'Backspace' && tagInput.value.length === 0 && tempTags.current.length > 0) {
+                        tempTags.current.pop();
+                        renderTags();
+                    }
+                });
+
+                tagInput.addEventListener('keyup', (e) => {
+                    if (e.key === ',') {
+                        addTag(tagInput.value.slice(0, -1));
+                    }
+                });
+
+                tagInput.addEventListener('blur', () => {
                     addTag(tagInput.value);
-                }
-                
-                if (e.key === 'Backspace' && tagInput.value.length === 0 && tempTags.current.length > 0) {
-                    tempTags.current.pop();
-                    renderTags();
-                }
-            });
-
-            tagInput.addEventListener('keyup', (e) => {
-                if (e.key === ',') {
-                    addTag(tagInput.value.slice(0, -1));
-                }
-            });
-
-            tagInput.addEventListener('blur', () => {
-                addTag(tagInput.value);
-            });
+                });
+            }
 
             renderTags();
         }
 
         function renderProcessForm(process = null) {
             const isEditing = !!process;
-            
             const initialTags = process && process.tags ? process.tags : [];
             tempTags.current = [...initialTags]; 
 
@@ -492,34 +504,44 @@
                 </div>
             `;
 
-            setupTagsInput(initialTags);
+            setupTagsInput(initialTags); // Chama para configurar os listeners de tags
 
-            document.getElementById('process-form').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const data = Object.fromEntries(formData.entries());
-                
-                if (isEditing) {
-                    data.caseNumber = process.caseNumber;
-                }
+            // Adiciona listeners de submit e cancelamento
+            const processForm = document.getElementById('process-form');
+            if (processForm) {
+                processForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    const data = Object.fromEntries(formData.entries());
+                    
+                    if (isEditing) {
+                        data.caseNumber = process.caseNumber;
+                    }
 
-                data.tags = tempTags.current;
+                    data.tags = tempTags.current;
 
-                if (isEditing) {
-                    updateProcess(process.id, data);
-                } else {
-                    createProcess(data);
-                }
-            });
+                    if (isEditing) {
+                        updateProcess(process.id, data);
+                    } else {
+                        createProcess(data);
+                    }
+                });
+            }
 
-            document.getElementById('cancel-button').addEventListener('click', () => {
-                state.currentView = 'processList';
-                state.currentProcess = null;
-                renderView();
-            });
-
+            const cancelButton = document.getElementById('cancel-button');
+            if (cancelButton) {
+                cancelButton.addEventListener('click', () => {
+                    state.currentView = 'processList';
+                    state.currentProcess = null;
+                    renderView();
+                });
+            }
+            
             if (isEditing) {
-                document.getElementById('delete-button').addEventListener('click', () => deleteProcess(process.id, process.caseNumber));
+                const deleteButton = document.getElementById('delete-button');
+                if (deleteButton) {
+                    deleteButton.addEventListener('click', () => deleteProcess(process.id, process.caseNumber));
+                }
             }
         }
 
@@ -587,6 +609,7 @@
                     </div>
                 `;
 
+                // Listener para abrir a edição
                 processItem.addEventListener('click', () => {
                     state.currentProcess = process;
                     state.currentView = 'editProcess';
@@ -627,12 +650,16 @@
                 </div>
             `;
 
-            document.getElementById('profile-form').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const data = Object.fromEntries(formData.entries());
-                saveProfile(data);
-            });
+            // Adiciona listener de submit do perfil
+            const profileForm = document.getElementById('profile-form');
+            if (profileForm) {
+                profileForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    const data = Object.fromEntries(formData.entries());
+                    saveProfile(data);
+                });
+            }
         }
 
         function renderDashboard() {
@@ -664,6 +691,7 @@
                 </div>
             `;
             
+            // Adiciona listeners para os botões do dashboard
             document.getElementById('dash-new-process').addEventListener('click', () => {
                 state.currentView = 'newProcess';
                 renderView();
@@ -685,16 +713,14 @@
 
         // Função de Roteamento (Main Renderer)
         function renderView() {
-            // Remove a classe ativa de todos os botões de navegação
+            if (!mainContent) return;
+
+            // Lógica de destaque do botão de navegação
             document.querySelectorAll('.nav-button').forEach(btn => 
                 btn.classList.remove('bg-sky-50', 'text-sky-800', 'font-semibold')
             );
-
-            // Determina qual botão de navegação deve ser ativo
             const currentNavView = state.currentView === 'newProcess' || state.currentView === 'editProcess' ? 'processList' : state.currentView;
             const activeNavButton = document.querySelector(`[data-view='${currentNavView}']`);
-            
-            // Adiciona a classe ativa
             if (activeNavButton) {
                 activeNavButton.classList.add('bg-sky-50', 'text-sky-800', 'font-semibold');
             }
@@ -707,6 +733,7 @@
             // Fecha o menu mobile ao trocar de view
             closeMobileMenuIfOpen();
 
+            // Renderiza o conteúdo principal
             switch (state.currentView) {
                 case 'processList':
                     renderProcessList();
@@ -715,10 +742,11 @@
                     renderProcessForm(null);
                     break;
                 case 'editProcess':
-                    const processToEdit = state.processes.find(p => p.id === state.currentProcess.id);
+                    const processToEdit = state.processes.find(p => p.id === state.currentProcess?.id);
                     if (processToEdit) {
                         renderProcessForm(processToEdit);
                     } else {
+                        // Volta para lista se o processo não for encontrado (ex: deletado)
                         state.currentView = 'processList';
                         state.currentProcess = null;
                         renderView();
@@ -735,34 +763,42 @@
         }
 
         // --- Configuração de Autenticação e Inicialização ---
+        let isInitialAuthResolved = false;
+        
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 state.userId = user.uid;
                 state.isAuthReady = true;
                 
+                // Configura os listeners de dados
                 loadProfile(); 
                 setupProcessListener(); 
-
+                
+                // Garante que a renderização inicial ocorra apenas UMA vez
                 if (!isInitialAuthResolved) {
                     renderView();
                     toggleLoading(false);
                     isInitialAuthResolved = true;
                 }
 
-            } else if (!isInitialAuthResolved) {
-                try {
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } catch (error) {
-                    console.error("Erro no login inicial (token ou anônimo):", error);
-                    if (!isInitialAuthResolved) {
-                         state.isAuthReady = true; 
-                         renderView(); 
-                         toggleLoading(false);
-                         isInitialAuthResolved = true;
+            } else {
+                // Tenta o login inicial se ainda não resolveu e não há usuário
+                if (!isInitialAuthResolved) {
+                    try {
+                        if (initialAuthToken) {
+                            // Tenta login com o token fornecido
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            // Cai para login anônimo
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Erro no login inicial:", error);
+                        // Falha total, mas marca como pronto para renderizar a UI vazia
+                        state.isAuthReady = true; 
+                        renderView(); 
+                        toggleLoading(false);
+                        isInitialAuthResolved = true;
                     }
                 }
             }
@@ -771,6 +807,11 @@
 
         // --- Inicialização da UI (eventos de navegação e PIX) ---
         window.onload = () => {
+            if (!mainContent) {
+                document.body.innerHTML = '<div class="p-8 text-center text-red-600">Erro: Estrutura principal não encontrada (ID "main-content" ausente).</div>';
+                return;
+            }
+
             toggleLoading(true); 
 
             // 1. Configurar botões de navegação
@@ -788,7 +829,7 @@
                 mobileMenuButton.addEventListener('click', () => window.toggleMobileMenu());
             }
 
-            // 3. Configurar botão PIX
+            // 3. Configurar botão PIX (tanto no sidebar quanto no footer)
             const pixButton = document.getElementById('pix-copy-button');
             const pixButtonSidebar = document.getElementById('pix-copy-button-sidebar');
 
@@ -804,6 +845,8 @@
             if (pixButtonSidebar) {
                 pixButtonSidebar.addEventListener('click', pixHandler);
             }
+
+            // O `onAuthStateChanged` lida com a primeira chamada a `renderView` e `toggleLoading(false)`
         };
 
     </script>
@@ -811,15 +854,13 @@
         /* Define a fonte Inter (Tailwind padrão) */
         body { font-family: 'Inter', sans-serif; }
         
-        /* Estilo para garantir a altura total e lidar com overflow em mobile (para o menu) */
-        /* A altura total da tela - a altura do rodapé (4.5rem é 72px) */
-        .min-h-screen-minus-footer {
-            min-height: calc(100vh - 4.5rem); 
+        /* Ajuste para garantir a altura correta do conteúdo principal */
+        .min-h-screen-minus-header {
+            min-height: calc(100vh - 4rem); /* Altura do header mobile */
         }
-        /* Ajuste para mobile onde o footer é escondido (sem subtrair a altura) */
-        @media (max-width: 1023px) { 
-            .min-h-screen-minus-footer {
-                min-height: calc(100vh - 4rem); /* Ajusta para a altura do mobile header */
+        @media (min-width: 1024px) { /* Breakpoint LG */
+            .min-h-screen-minus-header {
+                min-height: 100vh; /* Não precisa subtrair no desktop */
             }
         }
         
@@ -830,13 +871,11 @@
             -webkit-line-clamp: 2;
             overflow: hidden;
         }
-        /* Classe para quebrar o ID longo do usuário */
         .break-all {
             word-break: break-all;
         }
 
         /* --- ANIMAÇÕES PROFISSIONAIS --- */
-        
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -875,8 +914,7 @@
 
     <div id="app-wrapper" class="flex min-h-screen">
         
-        <!-- Sidebar/Menu (Fixo no Desktop, Deslizante no Mobile) -->
-        <!-- Z-40 para ficar acima do conteúdo, -translate-x-full para ficar invisível por padrão em mobile -->
+        <!-- Sidebar/Menu -->
         <div id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white shadow-xl p-6 flex flex-col z-40 transition-transform duration-300 -translate-x-full lg:translate-x-0 border-r border-gray-200">
             
             <!-- Logo -->
@@ -921,11 +959,10 @@
         </div>
         
         <!-- Overlay para o Menu Mobile -->
-        <!-- Oculta o overlay ao clicar, mas apenas em telas mobile (lg:hidden) -->
         <div id="mobile-overlay" onclick="window.toggleMobileMenu(false)" class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden transition-opacity duration-300 hidden"></div>
 
         <!-- Conteúdo Principal -->
-        <div class="flex-1 lg:ml-64 pb-20"> <!-- Adiciona ml-64 (largura da sidebar) a partir do lg -->
+        <div class="flex-1 lg:ml-64"> <!-- Adiciona ml-64 (largura da sidebar) a partir do lg -->
             
             <!-- Header Fixo Topo (Visível em Mobile) -->
             <header class="sticky top-0 z-20 bg-white shadow-sm p-4 lg:hidden flex justify-between items-center border-b border-gray-200">
@@ -947,8 +984,11 @@
 
             <!-- Área de Conteúdo Dinâmico (Views) -->
             <!-- p-4 no mobile, lg:p-8 no desktop -->
-            <main id="main-content" class="p-4 lg:p-8 min-h-screen-minus-footer">
+            <main id="main-content" class="p-4 lg:p-8 min-h-screen-minus-header">
                 <!-- Conteúdo será injetado aqui -->
+                <div class="text-center p-20 text-gray-500">
+                    <p>Iniciando o aplicativo...</p>
+                </div>
             </main>
         </div>
         
@@ -980,7 +1020,6 @@
     </div>
     
     <!-- Seção de Contribuição (Rodapé Fixo) - Apenas Desktop -->
-    <!-- hidden lg:block garante que ele não aparece no mobile -->
     <div class="fixed bottom-0 right-0 z-20 w-full lg:w-[calc(100%-16rem)] bg-white border-t border-gray-200 p-3 shadow-xl hidden lg:block">
         <div class="max-w-7xl mx-auto flex justify-center items-center text-sm text-gray-700 space-x-8">
             <p>
