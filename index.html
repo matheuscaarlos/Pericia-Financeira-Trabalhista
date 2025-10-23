@@ -5,779 +5,825 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciador de Perícias</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        /* Estilos Base */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f9fb;
-            color: #1e293b;
-            transition: background-color 0.3s, color 0.3s;
-        }
-        /* Estilos Modo Escuro */
-        .dark body {
-            background-color: #111827;
-            color: #d1d5db;
-        }
-        .card {
-            background-color: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-            transition: background-color 0.3s;
-        }
-        .dark .card {
-            background-color: #1f2937;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-        }
-        /* Utilitários de cor e badge */
-        .dark .text-gray-700 { color: #d1d5db; }
-        .dark .text-gray-500 { color: #9ca3af; }
-        .dark .text-gray-800 { color: #f3f4f6; }
-        .dark .border { border-color: #374151 !important; }
-
-        .btn-primary {
-            background-color: #1e40af;
-            color: white;
-            transition: background-color 0.2s;
-        }
-        .btn-primary:hover {
-            background-color: #1e3a8a;
-        }
-        .btn-primary:disabled {
-            background-color: #94a3b8;
-            cursor: not-allowed;
-        }
-        .status-badge-pendente { background-color: #fef3c7; color: #92400e; }
-        .status-badge-em-análise { background-color: #dbeafe; color: #1e40af; }
-        .status-badge-concluida { background-color: #d1fae5; color: #065f46; }
-        
-        /* Dark Mode Status Badges */
-        .dark .status-badge-pendente { background-color: #433005; color: #fef3c7; }
-        .dark .status-badge-em-análise { background-color: #0b1f4b; color: #dbeafe; }
-        .dark .status-badge-concluida { background-color: #032d1d; color: #d1fae5; }
-        
-        /* Animação simples para itens vencidos */
-        @keyframes pulse-red {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            50% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
-        }
-        .vencida-pulse {
-            animation: pulse-red 1.5s infinite;
-        }
-    </style>
-</head>
-<body>
-
-    <div id="app" class="min-h-screen p-4 md:p-8 flex justify-center">
-        <div class="container-app w-full max-w-5xl">
-            
-            <!-- Cabeçalho e Toggle de Modo Escuro -->
-            <header class="text-center mb-8 flex flex-col items-center">
-                <div class="w-full flex justify-between items-center mb-2">
-                    <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 dark:text-blue-400">Gerenciador de Perícias</h1>
-                    
-                    <!-- Toggle de Modo Escuro -->
-                    <button id="dark-mode-toggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors shadow-md" title="Alternar Modo Escuro">
-                        <!-- Ícone do sol (Light Mode) -->
-                        <svg id="sun-icon" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                        <!-- Ícone da lua (Dark Mode) -->
-                        <svg id="moon-icon" class="h-6 w-6 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                        </svg>
-                    </button>
-                </div>
-                
-                <p class="text-lg text-gray-600 dark:text-gray-400">Gestão de Casos Financeiros e Trabalhistas</p>
-                <div id="auth-info" class="mt-4 text-sm text-gray-500 p-2 card inline-block">
-                    Carregando autenticação...
-                </div>
-            </header>
-
-            <!-- Seção de Perfil do Usuário -->
-            <section class="mb-8 card p-6">
-                <h2 class="text-xl md:text-2xl font-bold mb-4 text-gray-700 dark:text-gray-300">Meu Perfil (Perito)</h2>
-                <div class="flex flex-col md:flex-row gap-6">
-                    <!-- Display do Perfil -->
-                    <div id="profile-display" class="w-full md:w-1/3 flex flex-col items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg transition-colors">
-                        <img id="profile-avatar" src="https://placehold.co/128x128/e0e7ff/1e40af?text=Perito" alt="Avatar do Perito" class="w-32 h-32 rounded-full object-cover mb-4 border-4 border-blue-300 dark:border-blue-500" onerror="this.onerror=null;this.src='https://placehold.co/128x128/e0e7ff/1e40af?text=Perito';">
-                        <p id="display-name" class="text-xl font-bold text-gray-800 dark:text-gray-100">Seu Nome</p>
-                        <p id="display-registry" class="text-sm text-gray-600 dark:text-gray-400">CRA/CRC: Não Informado</p>
-                    </div>
-
-                    <!-- Formulário de Edição do Perfil -->
-                    <form id="profile-form" class="w-full md:w-2/3 space-y-4">
-                        <div class="col-span-1">
-                            <label for="profileName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome Completo</label>
-                            <input type="text" id="profileName" placeholder="Seu Nome e Sobrenome" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
-                        </div>
-                        <div class="col-span-1">
-                            <label for="profileRegistry" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Registro Profissional (CRA/CRC)</label>
-                            <input type="text" id="profileRegistry" placeholder="Ex: CRA/XX 123456" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
-                        </div>
-                        <div class="col-span-1">
-                            <label for="profilePhotoUrl" class="block text-sm font-medium text-gray-700 dark:text-gray-300">URL da Foto de Perfil (Opcional)</label>
-                            <input type="url" id="profilePhotoUrl" placeholder="https://exemplo.com/minha-foto.jpg" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
-                        </div>
-                        <button type="submit" class="w-full btn-primary rounded-md p-2 font-semibold shadow-md hover:shadow-lg">
-                            Salvar Perfil
-                        </button>
-                    </form>
-                </div>
-            </section>
-
-            <!-- CONTEÚDO PRINCIPAL: Sempre visível -->
-            <div id="main-app-content">
-
-                <!-- Formulário de Nova Perícia -->
-                <section class="mb-8 card p-6">
-                    <h2 class="text-2xl font-bold mb-4 text-gray-700 dark:text-gray-300">Adicionar Nova Perícia</h2>
-                    <form id="pericia-form" class="grid grid-cols-1 md:grid-cols-3 gap-4"> 
-                        
-                        <div class="col-span-1">
-                            <label for="caseNumber" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nº do Processo</label>
-                            <input type="text" id="caseNumber" required class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
-                            <div id="case-number-status" class="text-xs mt-1 h-4"></div> 
-                        </div>
-
-                        <div class="col-span-1">
-                            <label for="client" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente / Litigante</label>
-                            <input type="text" id="client" required class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
-                        </div>
-
-                        <div class="col-span-1">
-                            <label for="court" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tribunal (Vara)</label>
-                            <input type="text" id="court" required class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
-                        </div>
-                        
-                        <div class="col-span-1">
-                            <label for="type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</label>
-                            <select id="type" required class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
-                                <option value="Financeira">Financeira</option>
-                                <option value="Trabalhista">Trabalhista</option>
-                            </select>
-                        </div>
-
-                        <div class="col-span-1">
-                            <label for="intimationDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data da Intimação</label>
-                            <input type="date" id="intimationDate" required class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
-                        </div>
-
-                        <div class="col-span-1">
-                            <label for="dueDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Prazo de Entrega</label>
-                            <input type="date" id="dueDate" required class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
-                        </div>
-                        
-                        <button type="submit" id="submit-pericia-btn" class="col-span-1 md:col-span-3 btn-primary rounded-md p-2 font-semibold shadow-md hover:shadow-lg">
-                            Adicionar Perícia
-                        </button>
-                    </form>
-                </section>
-
-                <!-- Dashboard de Estatísticas e Filtros -->
-                <section class="mb-6 p-4 card">
-                    <h3 class="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">Estatísticas e Filtros</h3>
-
-                    <!-- Contagem e Visualização (Dashboard) -->
-                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 space-y-4 md:space-y-0 md:space-x-8">
-                        <!-- Contagens -->
-                        <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-gray-600 dark:text-gray-400">
-                            <span class="text-blue-600 dark:text-blue-400">Total: <span id="total-pericia-count" class="font-bold">0</span></span>
-                            <span class="text-yellow-600 dark:text-yellow-400">Pendentes: <span id="pending-count" class="font-bold">0</span></span>
-                            <span class="text-green-600 dark:text-green-400">Concluídas: <span id="completed-count" class="font-bold">0</span></span>
-                        </div>
-
-                        <!-- Progresso Visual (Barra) -->
-                        <div class="w-full md:w-1/2">
-                            <div class="flex justify-between mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-                                <span>Progresso Geral</span>
-                                <span id="progress-percentage">0% Concluído</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                                <div id="progress-bar" class="bg-green-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Controles de Filtro -->
-                    <div class="pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-wrap justify-start gap-2">
-                        <select id="filter-court" class="rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 border text-sm">
-                            <option value="">Todos os Tribunais</option>
-                        </select>
-                        
-                        <select id="filter-type" class="rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 border text-sm">
-                            <option value="Financeira">Financeira</option>
-                            <option value="Trabalhista">Trabalhista</option>
-                        </select>
-                        <select id="filter-status" class="rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 border text-sm">
-                            <option value="">Todos os Status</option>
-                            <option value="Pendente">Pendente</option>
-                            <option value="Em Análise">Em Análise</option>
-                            <option value="Concluída">Concluída</option>
-                        </select>
-                    </div>
-                </section>
-                
-                <!-- Alerta de Prazos -->
-                <div id="deadline-warning" class="hidden card p-4 mb-6 font-medium flex items-center">
-                    <!-- Conteúdo do alerta injetado via JS -->
-                </div>
-
-                <!-- Lista de Perícias -->
-                <section class="card p-4">
-                    <div id="pericias-list" class="space-y-4">
-                        <!-- Perícias serão injetadas aqui -->
-                        <p id="loading-message" class="text-center text-gray-500 dark:text-gray-400">Carregando perícias...</p>
-                    </div>
-                </section>
-
-            </div>
-            <!-- Fim do CONTEÚDO PRINCIPAL -->
-            
-            <!-- Mensagem de Erro/Sucesso -->
-            <div id="message-box" class="fixed bottom-4 right-4 p-3 rounded-lg text-white font-semibold shadow-xl hidden"></div>
-        </div>
-    </div>
-
-    <!-- CUSTOM CONFIRMATION MODAL -->
-    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="card p-6 w-11/12 md:w-full max-w-sm dark:border dark:border-gray-700">
-            <h3 class="text-xl font-bold mb-4 text-red-600 dark:text-red-400">Confirmação Necessária</h3>
-            <p id="modal-message" class="mb-6 text-gray-700 dark:text-gray-300">Tem certeza que deseja excluir esta perícia?</p>
-            <div class="flex justify-end space-x-3">
-                <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 font-medium transition-colors">Cancelar</button>
-                <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium">Excluir</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Firebase Imports e Script -->
     <script type="module">
+        // --- Configurações e Inicialização do Firebase (Obrigatório) ---
+        // ESTE É O MECANISMO DE PERSISTÊNCIA: Usamos o Firestore, um banco de dados em nuvem.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, setLogLevel, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { 
+            getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, collection, doc, query, where, onSnapshot, 
+            addDoc, updateDoc, deleteDoc, orderBy, serverTimestamp, setLogLevel, getDocs, setDoc
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Variáveis Globais do Canvas (Obrigatórias)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-pericia-app';
+        // Variáveis globais de ambiente (fornecidas pelo Canvas)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        let app, db, auth, userId = null;
-        let isAuthReady = false;
-        let lastPericiasData = []; 
-        let currentDeleteId = null; 
-        let debounceTimeout = null; 
-
-        // --- Constantes e Configuração ---
-        setLogLevel('Debug');
-        const DEADLINE_WARNING_DAYS = 7; 
-        const USER_PROFILE_COLLECTION = `artifacts/${appId}/users`;
-        const PERICIAS_COLLECTION = 'pericias';
-
-        // Referências ao DOM
-        const periciaForm = document.getElementById('pericia-form');
-        const periciasList = document.getElementById('pericias-list');
-        const authInfo = document.getElementById('auth-info');
-        const messageBox = document.getElementById('message-box');
-        const loadingMessage = document.getElementById('loading-message');
-        const filterType = document.getElementById('filter-type');
-        const filterStatus = document.getElementById('filter-status');
-        const filterCourt = document.getElementById('filter-court');
-        const progressBar = document.getElementById('progress-bar');
-        const progressPercentage = document.getElementById('progress-percentage');
-        const deadlineWarning = document.getElementById('deadline-warning');
-        const profileForm = document.getElementById('profile-form');
         
-        // --- UTILS ---
+        // Inicializa o Firebase e Firestore
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        // Define o nível de log para debug
+        setLogLevel('debug');
 
-        // Exibe mensagens temporárias de sucesso/erro
-        function displayMessage(message, isError = false) {
-            messageBox.textContent = message;
-            messageBox.className = `fixed bottom-4 right-4 p-3 rounded-lg text-white font-semibold shadow-xl transition-opacity duration-300 ${isError ? 'bg-red-600' : 'bg-green-600'}`;
-            messageBox.style.opacity = 1;
-            messageBox.style.display = 'block';
+        // Estado global da aplicação
+        const state = {
+            processes: [],
+            userProfile: { name: '', registrationNumber: '' },
+            currentView: 'dashboard',
+            currentProcess: null,
+            userId: null,
+            isAuthReady: false
+        };
 
-            setTimeout(() => {
-                messageBox.style.opacity = 0;
-                setTimeout(() => messageBox.style.display = 'none', 300);
-            }, 3000);
-        }
+        // Elementos da UI
+        const processListContainer = document.getElementById('process-list-container');
+        const mainContent = document.getElementById('main-content');
+        const userNameDisplay = document.getElementById('user-name-display');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const modal = document.getElementById('custom-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const modalConfirmButton = document.getElementById('modal-confirm-button');
+        const modalCancelButton = document.getElementById('modal-cancel-button');
+        const loadingIndicator = document.getElementById('loading-indicator');
 
-        // Formata data para exibição (DD/MM/AAAA)
-        function formatDate(dateString) {
-            if (!dateString) return '';
-            try {
-                const date = new Date(dateString + 'T00:00:00'); // Garante que a data é tratada como início do dia
-                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            } catch (e) {
-                console.error("Erro ao formatar data:", e);
-                return dateString;
-            }
-        }
+        // --- Funções de Utilitário ---
 
-        // Retorna a classe CSS para o status da perícia
-        function getBadgeClass(status) {
-            switch (status) {
-                case 'Pendente': return 'status-badge-pendente';
-                case 'Em Análise': return 'status-badge-em-análise';
-                case 'Concluída': return 'status-badge-concluida';
-                default: return 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
-            }
-        }
-
-        // --- CUSTOM MODAL (for Delete Confirmation) ---
-        const customModal = document.getElementById('custom-modal');
-        const modalMessage = document.getElementById('modal-message');
-        const modalCancelBtn = document.getElementById('modal-cancel-btn');
-        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
-        let modalResolve;
-
-        function showCustomModal(message) {
-            modalMessage.textContent = message;
-            customModal.classList.remove('hidden');
+        // Função para mostrar modal customizado (substitui alert/confirm)
+        function showModal(title, bodyHtml, confirmText = 'OK', onConfirm = () => {}, showCancel = false, onCancel = () => {}) {
+            modalTitle.textContent = title;
+            modalBody.innerHTML = bodyHtml;
+            modalConfirmButton.textContent = confirmText;
             
-            return new Promise((resolve) => {
-                modalResolve = resolve;
-            });
-        }
+            modalConfirmButton.onclick = () => {
+                onConfirm();
+                modal.classList.add('hidden');
+            };
 
-        modalCancelBtn.addEventListener('click', () => {
-            customModal.classList.add('hidden');
-            modalResolve(false);
-        });
-        // The modalConfirmBtn event is set dynamically in renderPericias to handle the deletion.
-
-
-        // --- DARK MODE ---
-        function setupDarkMode() {
-            const toggle = document.getElementById('dark-mode-toggle');
-            const sunIcon = document.getElementById('sun-icon');
-            const moonIcon = document.getElementById('moon-icon');
-
-            // Checks initial state
-            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.documentElement.classList.add('dark');
-                sunIcon.classList.add('hidden');
-                moonIcon.classList.remove('hidden');
+            if (showCancel) {
+                modalCancelButton.classList.remove('hidden');
+                modalCancelButton.textContent = 'Cancelar';
+                modalCancelButton.onclick = () => {
+                    onCancel();
+                    modal.classList.add('hidden');
+                };
             } else {
-                document.documentElement.classList.remove('dark');
-                sunIcon.classList.remove('hidden');
-                moonIcon.classList.add('hidden');
+                modalCancelButton.classList.add('hidden');
             }
 
-            toggle.addEventListener('click', () => {
-                if (document.documentElement.classList.contains('dark')) {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.theme = 'light';
-                    sunIcon.classList.remove('hidden');
-                    moonIcon.classList.add('hidden');
-                } else {
-                    document.documentElement.classList.add('dark');
-                    localStorage.theme = 'dark';
-                    sunIcon.classList.add('hidden');
-                    moonIcon.classList.remove('hidden');
-                }
-            });
+            modal.classList.remove('hidden');
+            setTimeout(() => modalConfirmButton.focus(), 100); 
         }
 
-
-        // --- FIREBASE & AUTENTICAÇÃO ---
-
-        async function initializeFirebase() {
+        // Função para copiar texto para a área de transferência (PIX)
+        function copyToClipboard(text, successMessage) {
             try {
-                if (!app) {
-                    app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-                }
-
-                // Try to authenticate with token or anonymously
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                // Cria um elemento de texto temporário
+                const tempInput = document.createElement('textarea');
+                tempInput.value = text;
+                tempInput.style.position = 'fixed'; // Evita rolagem da página
+                tempInput.style.opacity = '0';
+                document.body.appendChild(tempInput);
                 
-                // Set up auth listener
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        isAuthReady = true;
-                        authInfo.innerHTML = `Logado como: <span class="font-bold text-blue-600 dark:text-blue-400">${userId}</span>`;
-                        
-                        listenForProfileUpdates();
-                        listenForPericias(); // Start listening for pericias immediately
-                    } else {
-                        userId = null;
-                        isAuthReady = true;
-                        authInfo.textContent = 'Não Autenticado';
-                        displayMessage('Erro: Falha na autenticação do usuário.', true);
-                    }
-                });
+                // Seleciona e copia o texto (usando document.execCommand para compatibilidade com iFrame)
+                tempInput.select();
+                document.execCommand('copy'); 
+                
+                document.body.removeChild(tempInput);
 
-            } catch (error) {
-                console.error("Erro ao inicializar Firebase ou autenticar:", error);
-                authInfo.textContent = 'ERRO: Falha ao carregar o app.';
-                displayMessage(`Erro de inicialização: ${error.message}`, true);
+                // Feedback visual usando o modal customizado
+                showModal("PIX Copiado!", successMessage, "Entendi");
+
+            } catch (err) {
+                console.error('Falha ao copiar:', err);
+                showModal(
+                    "Erro ao Copiar", 
+                    "Falha automática ao copiar o PIX. Por favor, copie manualmente: <code class='block mt-2 p-2 bg-gray-100 rounded-lg select-all'>" + text + "</code>", 
+                    "Entendi"
+                );
             }
         }
 
+        // Função para formatar a data
+        function formatDate(timestamp) {
+            if (!timestamp) return 'N/A';
+            // Verifica se é um objeto Timestamp do Firebase ou um Date
+            const date = timestamp.toDate ? timestamp.toDate() : (new Date(timestamp) instanceof Date && !isNaN(new Date(timestamp)) ? new Date(timestamp) : null);
+            return date ? date.toLocaleDateString('pt-BR') : 'Data Inválida';
+        }
 
-        // --- PERFIL ---
+        // Função para mostrar/esconder o loading
+        function toggleLoading(show) {
+            loadingIndicator.classList.toggle('hidden', !show);
+        }
 
-        // Escuta em tempo real as atualizações do perfil do usuário
-        function listenForProfileUpdates() {
-            if (!db || !userId) return;
+        // --- Gerenciamento de Perfil (Firestore) ---
 
-            const profileDocRef = doc(db, USER_PROFILE_COLLECTION, userId, 'profile', 'data');
-            
-            onSnapshot(profileDocRef, (docSnap) => {
+        function getProfileDocRef() {
+            if (!state.userId) {
+                // Não é um erro crítico, apenas um aviso se for chamado antes do auth
+                console.warn("UserID não disponível para perfil. Aguardando autenticação.");
+                return null;
+            }
+            // Path: /artifacts/{appId}/users/{userId}/profile/userProfile
+            return doc(db, `artifacts/${appId}/users/${state.userId}/profile/userProfile`);
+        }
+
+        function loadProfile() {
+            if (!state.userId || !state.isAuthReady) return;
+
+            const profileRef = getProfileDocRef();
+            if (!profileRef) return;
+
+            // onSnapshot garante que o perfil é carregado na inicialização e atualizado em tempo real.
+            onSnapshot(profileRef, (docSnap) => {
                 if (docSnap.exists()) {
-                    const profileData = docSnap.data();
-                    updateProfileUI(profileData);
+                    state.userProfile = docSnap.data();
                 } else {
-                    // Initialize the profile if it doesn't exist
-                    const defaultProfile = { name: "Usuário Anônimo", registry: "", photoUrl: "" };
-                    updateProfileUI(defaultProfile);
+                    state.userProfile = { name: '', registrationNumber: '' };
                 }
+                
+                // Exibe o nome e o ID COMPLETO
+                userNameDisplay.textContent = state.userProfile.name || 'Usuário Anônimo';
+                if (userIdDisplay) {
+                    userIdDisplay.textContent = state.userId;
+                }
+
+                if (state.currentView === 'profile') {
+                    renderView();
+                }
+
             }, (error) => {
-                console.error("Erro ao escutar updates de perfil:", error);
-                displayMessage("Erro ao carregar seu perfil. Veja o console.", true);
+                console.error("Erro ao carregar perfil:", error);
+                // Permite a continuidade da execução, mas informa sobre a falha de persistência
             });
         }
 
-        // Updates display and form fields for the profile
-        function updateProfileUI(profileData) {
-            document.getElementById('profileName').value = profileData.name || '';
-            document.getElementById('profileRegistry').value = profileData.registry || '';
-            document.getElementById('profilePhotoUrl').value = profileData.photoUrl || '';
-            
-            document.getElementById('display-name').textContent = profileData.name || 'Seu Nome';
-            document.getElementById('display-registry').textContent = `CRA/CRC: ${profileData.registry || 'Não Informado'}`;
-            document.getElementById('profile-avatar').src = profileData.photoUrl || 'https://placehold.co/128x128/e0e7ff/1e40af?text=Perito';
-        }
-
-        // Saves profile changes
-        async function saveProfile(e) {
-            e.preventDefault();
-            if (!userId) {
-                displayMessage("Usuário não autenticado. Tente recarregar a página.", true);
-                return;
-            }
-
-            const name = document.getElementById('profileName').value;
-            const registry = document.getElementById('profileRegistry').value;
-            const photoUrl = document.getElementById('profilePhotoUrl').value;
-            
-            if (!name) {
-                displayMessage("O nome é obrigatório.", true);
-                return;
-            }
-
+        async function saveProfile(data) {
+            const profileRef = getProfileDocRef();
+            if (!profileRef) return;
+            toggleLoading(true);
             try {
-                const profileDocRef = doc(db, USER_PROFILE_COLLECTION, userId, 'profile', 'data');
-                
-                // Use setDoc with merge: true
-                await setDoc(profileDocRef, { 
-                    name, 
-                    registry, 
-                    photoUrl,
-                }, { merge: true });
-
-                displayMessage('Perfil salvo com sucesso!');
+                // setDoc SALVA/ATUALIZA o perfil no Firestore, garantindo PERSISTÊNCIA.
+                await setDoc(profileRef, data, { merge: true });
+                showModal("Sucesso", "Informações de perfil salvas com sucesso.");
+                // O onSnapshot acima irá atualizar state.userProfile e a UI.
             } catch (error) {
                 console.error("Erro ao salvar perfil:", error);
-                displayMessage('Erro ao salvar perfil. Consulte o console.', true);
+                showModal("Erro", "Falha ao salvar o perfil. Tente novamente.", "Entendi");
+            } finally {
+                toggleLoading(false);
             }
         }
 
+        // --- Gerenciamento de Dados de Processos (Firestore) ---
 
-        // --- PERÍCIAS (CRUD E LISTENER) ---
-
-        // Listens in real-time to the user's pericias collection
-        function listenForPericias() {
-            if (!db || !userId) {
-                loadingMessage.textContent = 'Aguardando autenticação do usuário...';
-                return;
+        /**
+         * Retorna a referência da coleção de processos para o usuário atual.
+         * @returns {import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").CollectionReference | null}
+         */
+        function getProcessCollectionRef() {
+            if (!state.userId) {
+                console.warn("UserID não disponível para processos. Aguardando autenticação.");
+                return null;
             }
+            // Regra de Segurança: /artifacts/{appId}/users/{userId}/processes
+            return collection(db, `artifacts/${appId}/users/${state.userId}/processes`);
+        }
 
-            // Path to the user's pericias collection
-            const userPericiasRef = collection(db, USER_PROFILE_COLLECTION, userId, PERICIAS_COLLECTION);
-            
-            // Prepare the query based on filters
-            let periciasQuery = query(userPericiasRef);
-            
-            // Apply filters
-            const statusFilter = filterStatus.value;
-            const typeFilter = filterType.value;
-            const courtFilter = filterCourt.value;
+        // Listener de Realtime para os Processos
+        function setupProcessListener() {
+            if (!state.isAuthReady || !state.userId) return;
 
-            if (statusFilter) {
-                periciasQuery = query(periciasQuery, where('status', '==', statusFilter));
-            }
-            if (typeFilter) {
-                periciasQuery = query(periciasQuery, where('type', '==', typeFilter));
-            }
-            if (courtFilter) {
-                 periciasQuery = query(periciasQuery, where('court', '==', courtFilter));
-            }
+            const processesRef = getProcessCollectionRef();
+            if (!processesRef) return;
 
-            loadingMessage.textContent = 'Carregando perícias...';
+            // onSnapshot é o que CARREGA os dados SALVOS do Firestore na inicialização.
+            // Nota: Ordenar por createdAt é um bom padrão, mas sem `orderBy` para evitar problemas de índice.
+            // Vamos remover `orderBy` e ordenar localmente para evitar a necessidade de criar índices manuais.
+            const q = query(processesRef);
 
-            onSnapshot(periciasQuery, (snapshot) => {
-                const pericias = [];
+            onSnapshot(q, (snapshot) => {
+                const processes = [];
                 snapshot.forEach(doc => {
-                    pericias.push({ id: doc.id, ...doc.data() });
+                    processes.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Ordenação local por data de criação (descendente)
+                processes.sort((a, b) => {
+                    const dateA = a.createdAt?.seconds || 0;
+                    const dateB = b.createdAt?.seconds || 0;
+                    return dateB - dateA; // Mais recente primeiro
                 });
 
-                // Sort pericias by due date
-                pericias.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-
-                lastPericiasData = pericias;
-                
-                renderPericias(pericias);
-                updateDashboardStats(pericias);
+                state.processes = processes;
+                renderView();
             }, (error) => {
-                console.error("Erro ao carregar perícias:", error);
-                loadingMessage.textContent = 'Erro ao carregar perícias. Veja o console.';
-                displayMessage('Erro ao carregar lista de perícias.', true);
+                console.error("Erro ao escutar processos:", error);
+                showModal("Erro de Conexão", "Não foi possível carregar a lista de processos em tempo real. Verifique sua conexão.", "Entendi");
             });
         }
 
-        // Adds or updates a pericia
-        async function addOrUpdatePericia(e) {
-            e.preventDefault();
-            if (!userId) return;
-
-            const caseNumber = document.getElementById('caseNumber').value;
-            const client = document.getElementById('client').value;
-            const court = document.getElementById('court').value;
-            const type = document.getElementById('type').value;
-            const intimationDate = document.getElementById('intimationDate').value;
-            const dueDate = document.getElementById('dueDate').value;
-            const submitButton = document.getElementById('submit-pericia-btn');
-
-            submitButton.disabled = true;
-
-            const periciaData = {
-                caseNumber,
-                client,
-                court,
-                type,
-                intimationDate,
-                dueDate,
-                status: 'Pendente', 
-                createdAt: new Date().toISOString()
-            };
-
+        // Cria um novo processo (AGORA COM VERIFICAÇÃO DE DUPLICIDADE)
+        async function createProcess(data) {
+            const processesRef = getProcessCollectionRef();
+            if (!processesRef) return;
+            toggleLoading(true);
             try {
-                const userPericiasRef = collection(db, USER_PROFILE_COLLECTION, userId, PERICIAS_COLLECTION);
-                await addDoc(userPericiasRef, periciaData);
+                // --- 1. VERIFICAÇÃO DE DUPLICIDADE ---
+                const q = query(processesRef, where('caseNumber', '==', data.caseNumber));
+                const snapshot = await getDocs(q);
+
+                if (!snapshot.empty) {
+                    // Duplicidade encontrada
+                    showModal(
+                        "Erro de Duplicidade",
+                        `<p>Já existe um processo cadastrado com o número <strong>${data.caseNumber}</strong>.</p><p>Não é possível cadastrar processos com o mesmo número de processo.</p>`,
+                        "Entendi"
+                    );
+                    return; // Aborta a criação
+                }
+                // --- FIM DA VERIFICAÇÃO ---
                 
-                displayMessage('Perícia adicionada com sucesso!');
-                periciaForm.reset();
+                // addDoc SALVA o novo processo no Firestore, garantindo PERSISTÊNCIA.
+                await addDoc(processesRef, {
+                    ...data,
+                    status: 'Pendente',
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+                showModal("Sucesso", "Novo processo criado com sucesso.");
+                state.currentView = 'processList';
+                renderView();
             } catch (error) {
-                console.error("Erro ao adicionar perícia:", error);
-                displayMessage('Erro ao adicionar perícia. Consulte o console.', true);
+                console.error("Erro ao criar processo:", error);
+                showModal("Erro", "Falha ao criar o processo. Tente novamente.", "Entendi");
             } finally {
-                submitButton.disabled = false;
-            }
-        }
-        
-        // Updates the status of a pericia
-        async function updatePericiaStatus(id, newStatus) {
-            if (!userId) return;
-            try {
-                const periciaDocRef = doc(db, USER_PROFILE_COLLECTION, userId, PERICIAS_COLLECTION, id);
-                await updateDoc(periciaDocRef, { status: newStatus });
-                displayMessage(`Status da perícia ${id.substring(0, 5)}... atualizado para ${newStatus}.`);
-            } catch (error) {
-                console.error("Erro ao atualizar status:", error);
-                displayMessage('Erro ao atualizar status. Consulte o console.', true);
+                toggleLoading(false);
             }
         }
 
-        // Deletes a pericia
-        async function deletePericia(id) {
-            if (!userId) return;
+        // Atualiza um processo existente
+        async function updateProcess(id, data) {
+            const processesRef = getProcessCollectionRef();
+            if (!processesRef) return;
+
+            const processRef = doc(processesRef, id);
+            toggleLoading(true);
             try {
-                const periciaDocRef = doc(db, USER_PROFILE_COLLECTION, userId, PERICIAS_COLLECTION, id);
-                await deleteDoc(periciaDocRef);
-                displayMessage(`Perícia ${id.substring(0, 5)}... excluída com sucesso.`);
+                // updateDoc SALVA as alterações no Firestore.
+                await updateDoc(processRef, {
+                    ...data,
+                    updatedAt: serverTimestamp()
+                });
+                showModal("Sucesso", "Processo atualizado com sucesso.");
+                state.currentView = 'processList';
+                state.currentProcess = null;
+                renderView();
             } catch (error) {
-                console.error("Erro ao deletar perícia:", error);
-                displayMessage('Erro ao deletar perícia. Consulte o console.', true);
+                console.error("Erro ao atualizar processo:", error);
+                showModal("Erro", "Falha ao atualizar o processo. Tente novamente.", "Entendi");
+            } finally {
+                toggleLoading(false);
             }
         }
 
-        // Renders the list of pericias in the DOM
-        function renderPericias(pericias) {
-            periciasList.innerHTML = '';
-            loadingMessage.classList.add('hidden');
+        // Deleta um processo
+        async function deleteProcess(id, caseNumber) {
+            const processesRef = getProcessCollectionRef();
+            if (!processesRef) return;
             
-            if (pericias.length === 0) {
-                periciasList.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 p-8">Nenhuma perícia encontrada. Adicione uma nova!</p>';
+            const processRef = doc(processesRef, id);
+            
+            showModal(
+                "Confirmação de Exclusão", 
+                `<p>Tem certeza que deseja DELETAR o processo de número <strong>${caseNumber}</strong>?</p><p class="text-sm text-red-600">Esta ação é irreversível.</p>`, 
+                "Deletar", 
+                async () => {
+                    toggleLoading(true);
+                    try {
+                        // deleteDoc REMOVE os dados do Firestore.
+                        await deleteDoc(processRef);
+                        showModal("Sucesso", `Processo ${caseNumber} deletado.`);
+                        state.currentView = 'processList';
+                        state.currentProcess = null;
+                        renderView();
+                    } catch (error) {
+                        console.error("Erro ao deletar processo:", error);
+                        showModal("Erro", "Falha ao deletar o processo. Tente novamente.", "Entendi");
+                    } finally {
+                        toggleLoading(false);
+                    }
+                },
+                true
+            );
+        }
+
+        // --- Funções de Renderização de Views ---
+        
+        // Renderiza o formulário de Perfil
+        function renderProfileForm() {
+            const profile = state.userProfile;
+            
+            mainContent.innerHTML = `
+                <div class="bg-white p-6 rounded-xl shadow-2xl transition duration-500 ease-in-out transform hover:shadow-3xl">
+                    <h2 class="text-3xl font-extrabold text-cyan-700 mb-6 border-b-2 border-cyan-200 pb-2">
+                        Meu Perfil Profissional
+                    </h2>
+                    <form id="profile-form" class="space-y-4">
+                        <p class="text-sm text-gray-500 mb-4">Essas informações são privadas e usadas apenas para personalização da sua experiência.</p>
+                        
+                        <div>
+                            <label for="profileName" class="block text-sm font-medium text-gray-700">Nome Completo (ou Social):</label>
+                            <input type="text" id="profileName" name="name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50" value="${profile.name || ''}">
+                        </div>
+                        
+                        <div>
+                            <label for="registrationNumber" class="block text-sm font-medium text-gray-700">Registro Profissional (Ex: CRA, CRC, CREA, etc.):</label>
+                            <input type="text" id="registrationNumber" name="registrationNumber" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50" value="${profile.registrationNumber || ''}">
+                            <p class="text-xs text-gray-400 mt-1">Opcional. Usado para identificação no seu fluxo de trabalho.</p>
+                        </div>
+
+                        <div class="flex justify-end pt-4">
+                            <button type="submit" class="px-6 py-3 bg-cyan-600 text-white font-semibold rounded-lg shadow-lg hover:bg-cyan-700 transition duration-150 transform hover:scale-105">
+                                Salvar Perfil
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            document.getElementById('profile-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+                saveProfile(data);
+            });
+        }
+
+
+        function renderProcessForm(process = null) {
+            const isEditing = !!process;
+            
+            mainContent.innerHTML = `
+                <div class="bg-white p-6 rounded-xl shadow-2xl transition duration-500 ease-in-out transform hover:shadow-3xl">
+                    <h2 class="text-3xl font-extrabold text-cyan-700 mb-6 border-b-2 border-cyan-200 pb-2">
+                        ${isEditing ? 'Editar Processo: ' + process.caseNumber : 'Novo Processo'}
+                    </h2>
+                    <form id="process-form" class="space-y-4">
+                        
+                        <div>
+                            <label for="court" class="block text-sm font-medium text-gray-700">Tribunal/Vara:</label>
+                            <input type="text" id="court" name="court" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50" value="${isEditing ? process.court : ''}">
+                        </div>
+                        
+                        <div>
+                            <label for="caseNumber" class="block text-sm font-medium text-gray-700">Número do Processo:</label>
+                            <input type="text" id="caseNumber" name="caseNumber" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50" value="${isEditing ? process.caseNumber : ''}">
+                        </div>
+
+                        <div>
+                            <label for="clientName" class="block text-sm font-medium text-gray-700">Nome do Cliente:</label>
+                            <input type="text" id="clientName" name="clientName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50" value="${isEditing ? process.clientName : ''}">
+                        </div>
+
+                        <div>
+                            <label for="description" class="block text-sm font-medium text-gray-700">Descrição/Resumo:</label>
+                            <textarea id="description" name="description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50">${isEditing ? process.description || '' : ''}</textarea>
+                        </div>
+                        
+                        ${isEditing ? `
+                            <div>
+                                <label for="status" class="block text-sm font-medium text-gray-700">Status:</label>
+                                <select id="status" name="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50">
+                                    <option value="Pendente" ${process.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
+                                    <option value="Em Andamento" ${process.status === 'Em Andamento' ? 'selected' : ''}>Em Andamento</option>
+                                    <option value="Concluído" ${process.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                                    <option value="Arquivado" ${process.status === 'Arquivado' ? 'selected' : ''}>Arquivado</option>
+                                </select>
+                            </div>
+                        ` : ''}
+
+                        <div class="flex justify-end space-x-4 pt-4">
+                            <button type="button" id="cancel-button" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-100 transition duration-150 transform hover:scale-[1.02]">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="px-6 py-3 bg-cyan-600 text-white font-semibold rounded-lg shadow-lg hover:bg-cyan-700 transition duration-150 transform hover:scale-105">
+                                ${isEditing ? 'Salvar Alterações' : 'Criar Processo'}
+                            </button>
+                        </div>
+                    </form>
+                    ${isEditing ? `
+                        <div class="mt-8 pt-4 border-t border-red-200">
+                            <button id="delete-button" class="w-full px-4 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-lg hover:bg-red-700 transition duration-150 transform hover:scale-[1.02]">
+                                Deletar Processo
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            document.getElementById('process-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+                
+                if (isEditing) {
+                    updateProcess(process.id, data);
+                } else {
+                    createProcess(data);
+                }
+            });
+
+            document.getElementById('cancel-button').addEventListener('click', () => {
+                state.currentView = 'processList';
+                state.currentProcess = null;
+                renderView();
+            });
+
+            if (isEditing) {
+                document.getElementById('delete-button').addEventListener('click', () => deleteProcess(process.id, process.caseNumber));
+            }
+        }
+
+        function renderProcessList() {
+            mainContent.innerHTML = `
+                <div class="flex justify-between items-center mb-6 border-b pb-4">
+                    <h2 class="text-3xl font-extrabold text-cyan-700">Lista de Processos</h2>
+                    <button id="new-process-button" class="flex items-center bg-cyan-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-cyan-700 transition duration-150 transform hover:scale-105">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        Novo Processo
+                    </button>
+                </div>
+                <div id="process-list-items" class="space-y-4">
+                    <!-- Itens serão injetados aqui -->
+                </div>
+            `;
+
+            document.getElementById('new-process-button').addEventListener('click', () => {
+                state.currentView = 'newProcess';
+                state.currentProcess = null;
+                renderView();
+            });
+
+            const listItemsContainer = document.getElementById('process-list-items');
+
+            if (state.processes.length === 0) {
+                listItemsContainer.innerHTML = `
+                    <div class="text-center p-10 bg-slate-100 rounded-xl shadow-inner text-gray-500">
+                        <svg class="w-12 h-12 mx-auto mb-3 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <p class="font-semibold">Nenhum processo encontrado.</p>
+                        <p class="text-sm">Clique em "Novo Processo" para começar a gerenciar suas perícias.</p>
+                    </div>
+                `;
                 return;
             }
 
-            const today = new Date();
-            today.setHours(0, 0, 0, 0); 
-            const warningLimit = new Date();
-            warningLimit.setDate(today.getDate() + DEADLINE_WARNING_DAYS);
+            state.processes.forEach(process => {
+                const statusColor = {
+                    'Pendente': 'bg-red-100 text-red-800',
+                    'Em Andamento': 'bg-yellow-100 text-yellow-800',
+                    'Concluído': 'bg-green-100 text-green-800',
+                    'Arquivado': 'bg-gray-100 text-gray-800'
+                }[process.status] || 'bg-gray-100 text-gray-800';
 
-            let hasWarning = false;
-            let warningHtml = '';
-
-            pericias.forEach(pericia => {
-                const dueDate = new Date(pericia.dueDate + 'T00:00:00');
-                const isOverdue = pericia.status !== 'Concluída' && dueDate < today;
-                const isApproachingDeadline = pericia.status !== 'Concluída' && dueDate >= today && dueDate <= warningLimit;
-                
-                let cardClasses = 'card p-4 flex flex-col md:flex-row justify-between items-start md:items-center transition-shadow duration-300 hover:shadow-lg';
-                if (isOverdue) {
-                    cardClasses += ' border-l-8 border-red-500 vencida-pulse';
-                    warningHtml += `<p class="text-red-700 dark:text-red-400">🚨 Processo ${pericia.caseNumber} está vencido desde ${formatDate(pericia.dueDate)}.</p>`;
-                    hasWarning = true;
-                } else if (isApproachingDeadline) {
-                    cardClasses += ' border-l-8 border-yellow-500';
-                    const daysLeft = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-                    warningHtml += `<p class="text-yellow-700 dark:text-yellow-400">⚠️ Processo ${pericia.caseNumber} vence em ${daysLeft} dias (${formatDate(pericia.dueDate)}).</p>`;
-                    hasWarning = true;
-                }
-
-                const statusBadge = `<span class="px-3 py-1 text-xs font-semibold rounded-full ${getBadgeClass(pericia.status)}">${pericia.status}</span>`;
-                
-                const periciaItem = document.createElement('div');
-                periciaItem.className = cardClasses;
-                periciaItem.innerHTML = `
-                    <div class="mb-4 md:mb-0 w-full md:w-3/5">
-                        <div class="flex items-center space-x-2">
-                             ${statusBadge}
-                             <span class="text-xs text-gray-500 dark:text-gray-400">${pericia.type}</span>
+                const processItem = document.createElement('div');
+                processItem.className = 'process-item p-5 bg-white rounded-xl shadow-lg border-t-4 border-cyan-400 hover:shadow-xl transition duration-200 cursor-pointer transform hover:scale-[1.01]';
+                processItem.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm text-gray-500 truncate">Cliente: <span class="font-medium text-gray-700">${process.clientName}</span></p>
+                            <h3 class="text-xl font-bold text-gray-900 truncate mt-1">${process.caseNumber} - ${process.court}</h3>
+                            <p class="text-gray-600 mt-2 line-clamp-2">${process.description || 'Sem descrição.'}</p>
                         </div>
-                        <h3 class="text-xl font-bold mt-1 text-gray-800 dark:text-gray-100">${pericia.caseNumber}</h3>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Cliente: ${pericia.client} | Tribunal: ${pericia.court}</p>
-                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-1">
-                            Prazo Final: <span class="font-bold">${formatDate(pericia.dueDate)}</span> (Intimação: ${formatDate(pericia.intimationDate)})
-                        </p>
+                        <div class="ml-4 flex-shrink-0 text-right">
+                            <span class="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium ${statusColor}">
+                                ${process.status}
+                            </span>
+                            <p class="text-xs text-gray-400 mt-2">Criado em: ${formatDate(process.createdAt)}</p>
+                        </div>
                     </div>
+                `;
 
-                    <!-- Action Buttons -->
-                    <div class="flex flex-wrap gap-2 w-full md:w-2/5 justify-end">
-                        ${pericia.status !== 'Concluída' ? `<button data-id="${pericia.id}" data-status="Concluída" class="status-btn px-3 py-1 text-sm rounded-md bg-green-500 text-white hover:bg-green-600 transition-colors">Concluir</button>` : ''}
-                        ${pericia.status !== 'Em Análise' ? `<button data-id="${pericia.id}" data-status="Em Análise" class="status-btn px-3 py-1 text-sm rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors">Em Análise</button>` : ''}
-                        
-                        <button data-id="${pericia.id}" class="delete-btn px-3 py-1 text-sm rounded-md bg-red-500 text-white hover:bg-red-600 transition-colors">
-                            <svg class="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m10 0h-16"></path></svg>
+                processItem.addEventListener('click', () => {
+                    state.currentProcess = process;
+                    state.currentView = 'editProcess';
+                    renderView();
+                });
+                listItemsContainer.appendChild(processItem);
+            });
+        }
+
+        function renderDashboard() {
+            const total = state.processes.length;
+            const pendente = state.processes.filter(p => p.status === 'Pendente').length;
+            const emAndamento = state.processes.filter(p => p.status === 'Em Andamento').length;
+            const concluido = state.processes.filter(p => p.status === 'Concluído').length;
+
+            mainContent.innerHTML = `
+                <h2 class="text-3xl font-extrabold text-cyan-700 mb-8">Dashboard de Perícias</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    ${renderStatCard('Total de Processos', total, 'bg-cyan-100 text-cyan-800', 'border-cyan-400')}
+                    ${renderStatCard('Pendentes', pendente, 'bg-red-100 text-red-800', 'border-red-400')}
+                    ${renderStatCard('Em Andamento', emAndamento, 'bg-yellow-100 text-yellow-800', 'border-yellow-400')}
+                    ${renderStatCard('Concluídos', concluido, 'bg-green-100 text-green-800', 'border-green-400')}
+                </div>
+                
+                <div class="mt-10 p-6 bg-white rounded-xl shadow-xl">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Ações Rápidas</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button id="dash-new-process" class="flex items-center justify-center p-4 bg-cyan-600 text-white rounded-lg shadow-md hover:bg-cyan-700 transition duration-150 transform hover:scale-[1.02]">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            Adicionar Novo Processo
+                        </button>
+                        <button id="dash-view-list" class="flex items-center justify-center p-4 bg-slate-500 text-white rounded-lg shadow-md hover:bg-slate-600 transition duration-150 transform hover:scale-[1.02]">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                            Ver Lista Completa
                         </button>
                     </div>
-                `;
-                periciasList.appendChild(periciaItem);
+                </div>
+            `;
+            
+            document.getElementById('dash-new-process').addEventListener('click', () => {
+                state.currentView = 'newProcess';
+                renderView();
             });
+            document.getElementById('dash-view-list').addEventListener('click', () => {
+                state.currentView = 'processList';
+                renderView();
+            });
+        }
 
-            // Display or hide deadline warning
-            if (hasWarning) {
-                deadlineWarning.classList.remove('hidden');
-                deadlineWarning.innerHTML = `
-                    <svg class="w-6 h-6 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.372 17c-.77 1.333.192 3 1.732 3z"></path></svg>
-                    <div class="space-y-1">
-                        ${warningHtml}
-                    </div>
-                `;
-            } else {
-                deadlineWarning.classList.add('hidden');
-                deadlineWarning.innerHTML = '';
+        function renderStatCard(title, value, bgColorClass, borderColorClass) {
+            // Usa os novos parâmetros de cor para manter o estilo
+            return `
+                <div class="bg-white p-6 rounded-xl shadow-xl border-l-4 ${borderColorClass} transition duration-300 transform hover:scale-[1.02]">
+                    <p class="text-sm font-medium text-gray-500">${title}</p>
+                    <p class="mt-1 text-4xl font-extrabold ${bgColorClass.split(' ')[1].replace('text-', 'text-')}">${value}</p>
+                </div>
+            `;
+        }
+
+        // Função de Roteamento (Main Renderer)
+        function renderView() {
+            // Remove as classes de destaque do menu
+            document.querySelectorAll('.nav-button').forEach(btn => 
+                btn.classList.remove('bg-cyan-700', 'text-white')
+            );
+
+            // Adiciona classe de destaque ao botão da view atual
+            const currentNavView = state.currentView === 'newProcess' || state.currentView === 'editProcess' ? 'processList' : state.currentView;
+            const activeNavButton = document.querySelector(`[data-view='${currentNavView}']`);
+            if (activeNavButton) {
+                activeNavButton.classList.add('bg-cyan-700', 'text-white');
             }
+            
+            // --- ADIÇÃO DE ANIMAÇÃO DE FADE-IN NA TROCA DE TELA ---
+            mainContent.classList.remove('fade-in');
+            // Força o reflow/repaint para reiniciar a animação
+            void mainContent.offsetWidth; 
+            mainContent.classList.add('fade-in');
+            // --- FIM DA ANIMAÇÃO ---
 
-            // Add listeners to status buttons
-            document.querySelectorAll('.status-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const id = e.currentTarget.dataset.id;
-                    const status = e.currentTarget.dataset.status;
-                    updatePericiaStatus(id, status);
-                });
-            });
 
-            // Add listeners to delete buttons
-            document.querySelectorAll('.delete-btn').forEach(button => {
-                button.addEventListener('click', async (e) => {
-                    currentDeleteId = e.currentTarget.dataset.id;
-                    const caseNum = pericias.find(p => p.id === currentDeleteId)?.caseNumber || 'este item';
-                    
-                    const confirmed = await showCustomModal(`Você realmente deseja excluir a perícia do processo ${caseNum}? Esta ação é irreversível.`);
-                    
-                    if (confirmed) {
-                        deletePericia(currentDeleteId);
+            // Renderiza o conteúdo principal
+            switch (state.currentView) {
+                case 'processList':
+                    renderProcessList();
+                    break;
+                case 'newProcess':
+                    renderProcessForm(null);
+                    break;
+                case 'editProcess':
+                    renderProcessForm(state.currentProcess);
+                    break;
+                case 'profile':
+                    renderProfileForm();
+                    break;
+                case 'dashboard':
+                default:
+                    renderDashboard();
+                    break;
+            }
+        }
+
+        // --- Configuração de Autenticação e Inicialização ---
+        // A autenticação é crucial para vincular os dados persistentes (Firestore) ao usuário correto.
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Usuário autenticado (anônimo ou com token)
+                state.userId = user.uid;
+                state.isAuthReady = true;
+                console.log("Usuário autenticado:", state.userId);
+                
+                // Configura os listeners do Firestore
+                loadProfile(); // Carrega o perfil do usuário (persistência)
+                setupProcessListener(); // Carrega os processos (persistência)
+
+            } else {
+                // Usuário deslogado - Tenta fazer login com token customizado ou anonimamente
+                if (initialAuthToken) {
+                    try {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } catch (error) {
+                        console.error("Erro ao fazer login com token customizado:", error);
+                        // Falha no token customizado, tenta anonimamente como fallback
+                        try {
+                            await signInAnonymously(auth);
+                        } catch (anonError) {
+                            console.error("Erro ao fazer login anônimo:", anonError);
+                        }
                     }
-                    customModal.classList.add('hidden');
-                });
-            });
-            
-            // Set up modal confirmation button
-            modalConfirmBtn.onclick = () => {
-                customModal.classList.add('hidden');
-                if (modalResolve) {
-                    modalResolve(true);
+                } else {
+                    // Sem token, faz login anônimo
+                    try {
+                        await signInAnonymously(auth);
+                    } catch (error) {
+                        console.error("Erro ao fazer login anônimo:", error);
+                    }
                 }
-            };
-        }
-
-        // Updates dashboard stats and court filters
-        function updateDashboardStats(pericias) {
-            const total = pericias.length;
-            const completed = pericias.filter(p => p.status === 'Concluída').length;
-            const pending = pericias.filter(p => p.status === 'Pendente').length;
-            
-            const progress = total > 0 ? (completed / total) * 100 : 0;
-
-            document.getElementById('total-pericia-count').textContent = total;
-            document.getElementById('completed-count').textContent = completed;
-            document.getElementById('pending-count').textContent = pending;
-            
-            progressBar.style.width = `${progress}%`;
-            progressPercentage.textContent = `${Math.round(progress)}% Concluído`;
-
-            // Update court filter options
-            const courtSet = new Set(pericias.map(p => p.court).filter(c => c));
-            const selectedCourt = filterCourt.value;
-
-            filterCourt.innerHTML = '<option value="">Todos os Tribunais</option>';
-            courtSet.forEach(court => {
-                const option = document.createElement('option');
-                option.value = court;
-                option.textContent = court;
-                if (court === selectedCourt) {
-                    option.selected = true;
-                }
-                filterCourt.appendChild(option);
-            });
-        }
-
-
-        // --- GENERAL EVENT LISTENERS ---
-
-        periciaForm.addEventListener('submit', addOrUpdatePericia);
-        profileForm.addEventListener('submit', saveProfile);
-
-        // Listener for filters (using debounce)
-        [filterType, filterStatus, filterCourt].forEach(filterEl => {
-            filterEl.addEventListener('change', () => {
-                if (debounceTimeout) {
-                    clearTimeout(debounceTimeout);
-                }
-                debounceTimeout = setTimeout(() => {
-                    listenForPericias();
-                }, 300);
-            });
+            }
         });
 
-        // Initialize application
+
+        // --- Inicialização da UI (eventos de navegação e PIX) ---
         window.onload = () => {
-            setupDarkMode();
-            initializeFirebase();
+            // Configura os botões de navegação
+            document.querySelectorAll('.nav-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const view = button.getAttribute('data-view');
+                    state.currentView = view;
+                    state.currentProcess = null; // Limpa o processo atual ao navegar
+                    renderView();
+                });
+            });
+
+            // Configura o botão de cópia do PIX
+            const pixButton = document.getElementById('pix-copy-button');
+            if (pixButton) {
+                pixButton.addEventListener('click', () => {
+                    const pixKey = pixButton.getAttribute('data-pix');
+                    const message = `A chave PIX (celular) <strong>${pixKey}</strong> foi copiada para sua área de transferência. Obrigado pelo apoio!`;
+                    copyToClipboard(pixKey, message);
+                });
+            }
+
+            // Inicia a primeira renderização (será atualizada por onAuthStateChanged)
+            renderView(); 
         };
 
     </script>
+    <style>
+        /* Define a fonte Inter (Tailwind padrão) */
+        body { font-family: 'Inter', sans-serif; }
+        /* Estilo para garantir a altura total da tela (necessário para rodapé fixo) */
+        #app-wrapper { min-height: 100vh; display: flex; flex-direction: column; }
+        #main-app-content { flex-grow: 1; padding-bottom: 7rem; /* Espaço para o rodapé */ }
+        /* Classes para truncar texto em várias linhas */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            overflow: hidden;
+        }
+        /* Classe para quebrar o ID longo do usuário */
+        .break-all {
+            word-break: break-all;
+        }
+
+        /* --- ANIMAÇÕES PROFISSIONAIS --- */
+        
+        /* 1. Keyframe para Fade In e Movimento Suave */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 2. Classe aplicada ao main-content para transição de view */
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        /* 3. Transições gerais para elementos interativos */
+        .nav-button, button, .process-item, [class*="shadow"] {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* --- ANIMAÇÃO DE PULSAÇÃO PARA PIX --- */
+        @keyframes pulse-pix {
+            0% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.6); /* Cor verde do PIX */
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+            }
+        }
+        .pulse-pix-animation {
+            animation: pulse-pix 2s infinite cubic-bezier(0.66, 0, 0.33, 1);
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <div id="app-wrapper">
+        <!-- Barra Lateral de Navegação (Slate-800) -->
+        <div class="fixed top-0 left-0 h-full w-64 bg-slate-800 shadow-2xl p-6 flex flex-col z-30">
+            <div class="text-3xl font-extrabold text-white mb-10 border-b border-slate-600 pb-3">
+                <svg class="inline w-7 h-7 mr-2 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Gerenciador Pro
+            </div>
+            
+            <nav class="space-y-3">
+                <!-- Hover: bg-slate-700. Active: bg-cyan-700 -->
+                <button data-view="dashboard" class="nav-button w-full flex items-center p-3 rounded-lg text-slate-100 hover:bg-slate-700 transition duration-150">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    Dashboard
+                </button>
+                <button data-view="processList" class="nav-button w-full flex items-center p-3 rounded-lg text-slate-100 hover:bg-slate-700 transition duration-150">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                    Processos
+                </button>
+                <button data-view="profile" class="nav-button w-full flex items-center p-3 rounded-lg text-slate-100 hover:bg-slate-700 transition duration-150">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0h4m-4 0v1"></path></svg>
+                    Meu Perfil
+                </button>
+                <button data-view="newProcess" class="nav-button hidden w-full items-center p-3 rounded-lg text-slate-100 hover:bg-slate-700 transition duration-150"></button>
+            </nav>
+            
+            <div class="mt-auto pt-6 border-t border-slate-600">
+                <p id="user-name-display" class="text-base font-semibold text-white">Carregando...</p>
+                <p class="text-xs text-slate-300 mt-1">ID Completo:</p>
+                <p id="user-id-display" class="text-xs text-slate-300 break-all">Carregando...</p>
+                <p class="text-xs text-cyan-400 mt-2">Dados salvos em nuvem (Firestore)</p>
+                <!-- CAMPO DE DESTAQUE DO AUTOR -->
+                <div class="mt-4 pt-3 border-t border-slate-700">
+                    <p class="text-xs font-medium text-cyan-300">Desenvolvido por você (Proprietário)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteúdo Principal -->
+        <div id="main-app-content" class="ml-64 p-8">
+            <header class="mb-8 p-4 bg-white rounded-xl shadow-lg border-t-4 border-cyan-500">
+                <h1 class="text-4xl font-bold text-slate-800">Gerenciamento de Perícias</h1>
+                <p class="text-gray-500 mt-2">Acompanhe seus processos e não perca prazos.</p>
+            </header>
+
+            <!-- Indicador de Carregamento -->
+            <div id="loading-indicator" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded-xl shadow-2xl flex items-center space-x-3">
+                    <svg class="animate-spin h-6 w-6 text-cyan-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-cyan-600 font-semibold">Carregando dados...</span>
+                </div>
+            </div>
+
+            <!-- Área de Conteúdo Dinâmico (Views) -->
+            <div id="main-content">
+                <!-- Conteúdo do Dashboard / Lista / Formulário será injetado aqui -->
+            </div>
+        </div>
+        
+        <!-- Modal Customizado (Alerta/Confirmação) -->
+        <div id="custom-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-40 p-4">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+                <div class="p-6">
+                    <h3 id="modal-title" class="text-xl font-bold text-gray-900 mb-4">Título do Modal</h3>
+                    <div id="modal-body" class="text-gray-600 mb-6 space-y-3">Conteúdo do modal.</div>
+                    <div class="flex justify-end space-x-3">
+                        <button id="modal-cancel-button" class="hidden px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-150 transform hover:scale-[1.02]">Cancelar</button>
+                        <button id="modal-confirm-button" class="px-4 py-2 bg-cyan-600 text-white font-semibold rounded-lg hover:bg-cyan-700 transition duration-150 transform hover:scale-[1.02]">OK</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
+    <!-- Seção de Contribuição (Rodapé Fixo) -->
+    <div class="fixed bottom-0 left-0 right-0 bg-slate-700 border-t border-slate-600 p-4 shadow-2xl z-20 ml-64">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-center items-center text-sm text-gray-300 space-y-2 sm:space-y-0 sm:space-x-8">
+            <p class="text-center sm:text-left">
+                Apoie o desenvolvimento via PIX (Chave Celular):
+            </p>
+            <!-- Botão com a chave PIX e função de cópia (AGORA COM ANIMAÇÃO DE PULSAÇÃO) -->
+            <button id="pix-copy-button" data-pix="87988593247" class="pulse-pix-animation flex items-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
+                <!-- Ícone de Coração (Suporte) -->
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                Copiar PIX: 87988593247
+            </button>
+        </div>
+    </div>
 </body>
 </html>
