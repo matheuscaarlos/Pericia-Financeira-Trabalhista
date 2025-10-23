@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciador de Perícias</title>
+    <title>Gerenciador de Perícias Profissional</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
         // --- Configurações e Inicialização do Firebase (Obrigatório) ---
@@ -14,7 +14,7 @@
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, collection, doc, query, where, onSnapshot, 
-            addDoc, updateDoc, deleteDoc, orderBy, serverTimestamp, setLogLevel, getDocs, setDoc
+            addDoc, updateDoc, deleteDoc, serverTimestamp, setLogLevel, getDocs, setDoc
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variáveis globais de ambiente (fornecidas pelo Canvas)
@@ -39,6 +39,12 @@
             userId: null,
             isAuthReady: false
         };
+
+        // Estado temporário para o formulário de Tags
+        const tempTags = {
+            current: []
+        };
+
 
         // Elementos da UI
         const processListContainer = document.getElementById('process-list-container');
@@ -83,20 +89,16 @@
         // Função para copiar texto para a área de transferência (PIX)
         function copyToClipboard(text, successMessage) {
             try {
-                // Cria um elemento de texto temporário
                 const tempInput = document.createElement('textarea');
                 tempInput.value = text;
-                tempInput.style.position = 'fixed'; // Evita rolagem da página
+                tempInput.style.position = 'fixed'; 
                 tempInput.style.opacity = '0';
                 document.body.appendChild(tempInput);
                 
-                // Seleciona e copia o texto (usando document.execCommand para compatibilidade com iFrame)
                 tempInput.select();
                 document.execCommand('copy'); 
                 
                 document.body.removeChild(tempInput);
-
-                // Feedback visual usando o modal customizado
                 showModal("PIX Copiado!", successMessage, "Entendi");
 
             } catch (err) {
@@ -112,7 +114,6 @@
         // Função para formatar a data
         function formatDate(timestamp) {
             if (!timestamp) return 'N/A';
-            // Verifica se é um objeto Timestamp do Firebase ou um Date
             const date = timestamp.toDate ? timestamp.toDate() : (new Date(timestamp) instanceof Date && !isNaN(new Date(timestamp)) ? new Date(timestamp) : null);
             return date ? date.toLocaleDateString('pt-BR') : 'Data Inválida';
         }
@@ -126,7 +127,6 @@
 
         function getProfileDocRef() {
             if (!state.userId) {
-                // Não é um erro crítico, apenas um aviso se for chamado antes do auth
                 console.warn("UserID não disponível para perfil. Aguardando autenticação.");
                 return null;
             }
@@ -140,7 +140,6 @@
             const profileRef = getProfileDocRef();
             if (!profileRef) return;
 
-            // onSnapshot garante que o perfil é carregado na inicialização e atualizado em tempo real.
             onSnapshot(profileRef, (docSnap) => {
                 if (docSnap.exists()) {
                     state.userProfile = docSnap.data();
@@ -148,7 +147,6 @@
                     state.userProfile = { name: '', registrationNumber: '' };
                 }
                 
-                // Exibe o nome e o ID COMPLETO
                 userNameDisplay.textContent = state.userProfile.name || 'Usuário Anônimo';
                 if (userIdDisplay) {
                     userIdDisplay.textContent = state.userId;
@@ -160,7 +158,6 @@
 
             }, (error) => {
                 console.error("Erro ao carregar perfil:", error);
-                // Permite a continuidade da execução, mas informa sobre a falha de persistência
             });
         }
 
@@ -169,10 +166,8 @@
             if (!profileRef) return;
             toggleLoading(true);
             try {
-                // setDoc SALVA/ATUALIZA o perfil no Firestore, garantindo PERSISTÊNCIA.
                 await setDoc(profileRef, data, { merge: true });
                 showModal("Sucesso", "Informações de perfil salvas com sucesso.");
-                // O onSnapshot acima irá atualizar state.userProfile e a UI.
             } catch (error) {
                 console.error("Erro ao salvar perfil:", error);
                 showModal("Erro", "Falha ao salvar o perfil. Tente novamente.", "Entendi");
@@ -183,10 +178,6 @@
 
         // --- Gerenciamento de Dados de Processos (Firestore) ---
 
-        /**
-         * Retorna a referência da coleção de processos para o usuário atual.
-         * @returns {import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").CollectionReference | null}
-         */
         function getProcessCollectionRef() {
             if (!state.userId) {
                 console.warn("UserID não disponível para processos. Aguardando autenticação.");
@@ -203,22 +194,24 @@
             const processesRef = getProcessCollectionRef();
             if (!processesRef) return;
 
-            // onSnapshot é o que CARREGA os dados SALVOS do Firestore na inicialização.
-            // Nota: Ordenar por createdAt é um bom padrão, mas sem `orderBy` para evitar problemas de índice.
-            // Vamos remover `orderBy` e ordenar localmente para evitar a necessidade de criar índices manuais.
             const q = query(processesRef);
 
             onSnapshot(q, (snapshot) => {
                 const processes = [];
                 snapshot.forEach(doc => {
-                    processes.push({ id: doc.id, ...doc.data() });
+                    const data = doc.data();
+                    // Garante que 'tags' é um array mesmo que o Firestore retorne undefined ou null
+                    if (!data.tags || !Array.isArray(data.tags)) {
+                        data.tags = [];
+                    }
+                    processes.push({ id: doc.id, ...data });
                 });
                 
                 // Ordenação local por data de criação (descendente)
                 processes.sort((a, b) => {
                     const dateA = a.createdAt?.seconds || 0;
                     const dateB = b.createdAt?.seconds || 0;
-                    return dateB - dateA; // Mais recente primeiro
+                    return dateB - dateA; 
                 });
 
                 state.processes = processes;
@@ -229,30 +222,29 @@
             });
         }
 
-        // Cria um novo processo (AGORA COM VERIFICAÇÃO DE DUPLICIDADE)
+        // Cria um novo processo
         async function createProcess(data) {
             const processesRef = getProcessCollectionRef();
             if (!processesRef) return;
             toggleLoading(true);
             try {
-                // --- 1. VERIFICAÇÃO DE DUPLICIDADE ---
+                // 1. VERIFICAÇÃO DE DUPLICIDADE
                 const q = query(processesRef, where('caseNumber', '==', data.caseNumber));
                 const snapshot = await getDocs(q);
 
                 if (!snapshot.empty) {
-                    // Duplicidade encontrada
                     showModal(
                         "Erro de Duplicidade",
-                        `<p>Já existe um processo cadastrado com o número <strong>${data.caseNumber}</strong>.</p><p>Não é possível cadastrar processos com o mesmo número de processo.</p>`,
+                        `<p>Já existe um processo cadastrado com o número <strong>${data.caseNumber}</strong>.</p>`,
                         "Entendi"
                     );
-                    return; // Aborta a criação
+                    return; 
                 }
-                // --- FIM DA VERIFICAÇÃO ---
                 
-                // addDoc SALVA o novo processo no Firestore, garantindo PERSISTÊNCIA.
                 await addDoc(processesRef, {
                     ...data,
+                    // Garante que tags é salvo como um array
+                    tags: data.tags || [],
                     status: 'Pendente',
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp()
@@ -276,9 +268,10 @@
             const processRef = doc(processesRef, id);
             toggleLoading(true);
             try {
-                // updateDoc SALVA as alterações no Firestore.
                 await updateDoc(processRef, {
                     ...data,
+                    // Garante que tags é salvo como um array
+                    tags: data.tags || [],
                     updatedAt: serverTimestamp()
                 });
                 showModal("Sucesso", "Processo atualizado com sucesso.");
@@ -307,7 +300,6 @@
                 async () => {
                     toggleLoading(true);
                     try {
-                        // deleteDoc REMOVE os dados do Firestore.
                         await deleteDoc(processRef);
                         showModal("Sucesso", `Processo ${caseNumber} deletado.`);
                         state.currentView = 'processList';
@@ -325,82 +317,136 @@
         }
 
         // --- Funções de Renderização de Views ---
-        
-        // Renderiza o formulário de Perfil
-        function renderProfileForm() {
-            const profile = state.userProfile;
+
+        // Função para configurar a entrada de tags
+        function setupTagsInput(initialTags = []) {
+            const tagsContainer = document.getElementById('tags-container');
+            const tagInput = document.getElementById('tag-input');
             
-            mainContent.innerHTML = `
-                <div class="bg-white p-6 rounded-xl shadow-2xl transition duration-500 ease-in-out transform hover:shadow-3xl">
-                    <h2 class="text-3xl font-extrabold text-cyan-700 mb-6 border-b-2 border-cyan-200 pb-2">
-                        Meu Perfil Profissional
-                    </h2>
-                    <form id="profile-form" class="space-y-4">
-                        <p class="text-sm text-gray-500 mb-4">Essas informações são privadas e usadas apenas para personalização da sua experiência.</p>
-                        
-                        <div>
-                            <label for="profileName" class="block text-sm font-medium text-gray-700">Nome Completo (ou Social):</label>
-                            <input type="text" id="profileName" name="name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50" value="${profile.name || ''}">
-                        </div>
-                        
-                        <div>
-                            <label for="registrationNumber" class="block text-sm font-medium text-gray-700">Registro Profissional (Ex: CRA, CRC, CREA, etc.):</label>
-                            <input type="text" id="registrationNumber" name="registrationNumber" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50" value="${profile.registrationNumber || ''}">
-                            <p class="text-xs text-gray-400 mt-1">Opcional. Usado para identificação no seu fluxo de trabalho.</p>
-                        </div>
+            // Inicializa o estado de tags temporário
+            tempTags.current = [...initialTags];
 
-                        <div class="flex justify-end pt-4">
-                            <button type="submit" class="px-6 py-3 bg-cyan-600 text-white font-semibold rounded-lg shadow-lg hover:bg-cyan-700 transition duration-150 transform hover:scale-105">
-                                Salvar Perfil
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            `;
+            // 1. Renderiza as tags atuais no container
+            const renderTags = () => {
+                tagsContainer.innerHTML = '';
+                tempTags.current.forEach((tag, index) => {
+                    const tagPill = document.createElement('span');
+                    // COR: bg-indigo-100 para a pílula e text-indigo-800
+                    tagPill.className = 'flex items-center bg-indigo-100 text-indigo-800 text-sm font-medium px-3 py-1 rounded-full shadow-sm';
+                    tagPill.innerHTML = `
+                        ${tag}
+                        <button type="button" data-index="${index}" class="ml-2 text-indigo-500 hover:text-indigo-700 focus:outline-none remove-tag-btn">
+                            &times;
+                        </button>
+                    `;
+                    tagsContainer.appendChild(tagPill);
+                });
+                // Garante que o container de pílulas tenha espaço quando vazio
+                tagsContainer.classList.toggle('p-2', tempTags.current.length > 0);
+            };
 
-            document.getElementById('profile-form').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const data = Object.fromEntries(formData.entries());
-                saveProfile(data);
+            // 2. Adiciona uma nova tag
+            const addTag = (text) => {
+                let tag = text.trim().toLowerCase().replace(/[^a-z0-9áéíóúçãõ\s-]/g, ''); // Limpeza básica
+                if (tag && !tempTags.current.includes(tag)) {
+                    tempTags.current.push(tag);
+                    renderTags();
+                    tagInput.value = ''; // Limpa o input
+                }
+            };
+
+            // 3. Remove uma tag
+            tagsContainer.addEventListener('click', (e) => {
+                if (e.target.classList.contains('remove-tag-btn')) {
+                    const index = parseInt(e.target.getAttribute('data-index'));
+                    tempTags.current.splice(index, 1);
+                    renderTags();
+                }
             });
-        }
 
+            // 4. Lógica de Input (Enter ou Vírgula)
+            tagInput.addEventListener('keydown', (e) => {
+                // Checa Enter
+                if (e.key === 'Enter') {
+                    e.preventDefault(); 
+                    addTag(tagInput.value);
+                }
+                
+                // Checa Backspace no campo vazio para remover o último
+                if (e.key === 'Backspace' && tagInput.value.length === 0 && tempTags.current.length > 0) {
+                    tempTags.current.pop();
+                    renderTags();
+                }
+            });
+
+            tagInput.addEventListener('keyup', (e) => {
+                 // Checa Vírgula
+                if (e.key === ',') {
+                    // Remove a vírgula e adiciona a tag
+                    addTag(tagInput.value.slice(0, -1));
+                }
+            });
+
+            // Adiciona a tag restante ao sair do foco, se houver texto
+            tagInput.addEventListener('blur', () => {
+                addTag(tagInput.value);
+            });
+
+
+            renderTags();
+        }
 
         function renderProcessForm(process = null) {
             const isEditing = !!process;
             
+            // Inicializa as tags para o estado temporário
+            const initialTags = process && process.tags ? process.tags : [];
+            tempTags.current = [...initialTags]; // Garante que o tempTags.current está pronto antes de renderizar
+
             mainContent.innerHTML = `
-                <div class="bg-white p-6 rounded-xl shadow-2xl transition duration-500 ease-in-out transform hover:shadow-3xl">
-                    <h2 class="text-3xl font-extrabold text-cyan-700 mb-6 border-b-2 border-cyan-200 pb-2">
+                <!-- Melhoria: Sombra mais nítida e transição suave -->
+                <div class="bg-white p-8 rounded-xl shadow-xl hover:shadow-2xl transition duration-300">
+                    <h2 class="text-3xl font-extrabold text-indigo-700 mb-6 border-b-2 border-indigo-200 pb-3">
                         ${isEditing ? 'Editar Processo: ' + process.caseNumber : 'Novo Processo'}
                     </h2>
-                    <form id="process-form" class="space-y-4">
+                    <form id="process-form" class="space-y-6">
                         
                         <div>
-                            <label for="court" class="block text-sm font-medium text-gray-700">Tribunal/Vara:</label>
-                            <input type="text" id="court" name="court" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50" value="${isEditing ? process.court : ''}">
+                            <label for="court" class="block text-sm font-semibold text-gray-700 mb-1">Tribunal/Vara:</label>
+                            <input type="text" id="court" name="court" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150" value="${isEditing ? process.court : ''}">
                         </div>
                         
                         <div>
-                            <label for="caseNumber" class="block text-sm font-medium text-gray-700">Número do Processo:</label>
-                            <input type="text" id="caseNumber" name="caseNumber" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50" value="${isEditing ? process.caseNumber : ''}">
+                            <label for="caseNumber" class="block text-sm font-semibold text-gray-700 mb-1">Número do Processo:</label>
+                            <input type="text" id="caseNumber" name="caseNumber" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150" value="${isEditing ? process.caseNumber : ''}" ${isEditing ? 'disabled' : ''}>
+                            ${isEditing ? '<p class="text-xs text-gray-400 mt-1">O número do processo não pode ser alterado.</p>' : ''}
                         </div>
 
                         <div>
-                            <label for="clientName" class="block text-sm font-medium text-gray-700">Nome do Cliente:</label>
-                            <input type="text" id="clientName" name="clientName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50" value="${isEditing ? process.clientName : ''}">
+                            <label for="clientName" class="block text-sm font-semibold text-gray-700 mb-1">Nome do Cliente:</label>
+                            <input type="text" id="clientName" name="clientName" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150" value="${isEditing ? process.clientName : ''}">
                         </div>
 
+                        <!-- CAMPO DE TAGS -->
                         <div>
-                            <label for="description" class="block text-sm font-medium text-gray-700">Descrição/Resumo:</label>
-                            <textarea id="description" name="description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50">${isEditing ? process.description || '' : ''}</textarea>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Tags (Separe com Enter ou Vírgula):</label>
+                            <div id="tags-container" class="mt-1 flex flex-wrap gap-2 p-3 bg-gray-100 border border-gray-300 rounded-lg min-h-[44px]">
+                                <!-- Pílulas de tags renderizadas por JS -->
+                            </div>
+                            <input type="text" id="tag-input" placeholder="Ex: Urgente, Contábil, Complexo..." class="mt-2 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-white transition duration-150">
+                        </div>
+                        <!-- FIM DO CAMPO DE TAGS -->
+
+
+                        <div>
+                            <label for="description" class="block text-sm font-semibold text-gray-700 mb-1">Descrição/Resumo:</label>
+                            <textarea id="description" name="description" rows="3" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150">${isEditing ? process.description || '' : ''}</textarea>
                         </div>
                         
                         ${isEditing ? `
                             <div>
-                                <label for="status" class="block text-sm font-medium text-gray-700">Status:</label>
-                                <select id="status" name="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 bg-gray-50">
+                                <label for="status" class="block text-sm font-semibold text-gray-700 mb-1">Status:</label>
+                                <select id="status" name="status" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150">
                                     <option value="Pendente" ${process.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
                                     <option value="Em Andamento" ${process.status === 'Em Andamento' ? 'selected' : ''}>Em Andamento</option>
                                     <option value="Concluído" ${process.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
@@ -410,17 +456,21 @@
                         ` : ''}
 
                         <div class="flex justify-end space-x-4 pt-4">
-                            <button type="button" id="cancel-button" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-100 transition duration-150 transform hover:scale-[1.02]">
+                            <!-- Melhoria: Botão Cancelar com sombra e hover mais profissional -->
+                            <button type="button" id="cancel-button" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white shadow-md hover:bg-gray-100 hover:shadow-lg transition duration-200">
                                 Cancelar
                             </button>
-                            <button type="submit" class="px-6 py-3 bg-cyan-600 text-white font-semibold rounded-lg shadow-lg hover:bg-cyan-700 transition duration-150 transform hover:scale-105">
+                            <!-- COR: bg-indigo-600 -->
+                            <!-- Melhoria: Botão Primário mais proeminente -->
+                            <button type="submit" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl transition duration-200 transform hover:scale-[1.01]">
                                 ${isEditing ? 'Salvar Alterações' : 'Criar Processo'}
                             </button>
                         </div>
                     </form>
                     ${isEditing ? `
-                        <div class="mt-8 pt-4 border-t border-red-200">
-                            <button id="delete-button" class="w-full px-4 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-lg hover:bg-red-700 transition duration-150 transform hover:scale-[1.02]">
+                        <div class="mt-8 pt-6 border-t border-red-200">
+                            <!-- Melhoria: Botão de Deletar com transição -->
+                            <button id="delete-button" class="w-full px-4 py-3 bg-red-600 text-white font-semibold rounded-lg shadow-lg hover:bg-red-700 hover:shadow-xl transition duration-200">
                                 Deletar Processo
                             </button>
                         </div>
@@ -428,11 +478,22 @@
                 </div>
             `;
 
+            // Chama a função de configuração do input de tags APÓS a renderização
+            setupTagsInput(initialTags);
+
             document.getElementById('process-form').addEventListener('submit', (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
                 
+                // O número do processo é desativado na edição, então precisamos buscá-lo do objeto original
+                if (isEditing) {
+                    data.caseNumber = process.caseNumber;
+                }
+
+                // Adiciona o array de tags ao objeto de dados antes de salvar
+                data.tags = tempTags.current;
+
                 if (isEditing) {
                     updateProcess(process.id, data);
                 } else {
@@ -454,8 +515,10 @@
         function renderProcessList() {
             mainContent.innerHTML = `
                 <div class="flex justify-between items-center mb-6 border-b pb-4">
-                    <h2 class="text-3xl font-extrabold text-cyan-700">Lista de Processos</h2>
-                    <button id="new-process-button" class="flex items-center bg-cyan-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-cyan-700 transition duration-150 transform hover:scale-105">
+                    <!-- COR: text-indigo-700 -->
+                    <h2 class="text-3xl font-extrabold text-indigo-700">Lista de Processos</h2>
+                    <!-- COR: bg-indigo-600 -->
+                    <button id="new-process-button" class="flex items-center bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.01]">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                         Novo Processo
                     </button>
@@ -475,9 +538,10 @@
 
             if (state.processes.length === 0) {
                 listItemsContainer.innerHTML = `
-                    <div class="text-center p-10 bg-slate-100 rounded-xl shadow-inner text-gray-500">
-                        <svg class="w-12 h-12 mx-auto mb-3 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <p class="font-semibold">Nenhum processo encontrado.</p>
+                    <div class="text-center p-10 bg-white rounded-xl shadow-lg text-gray-500 border border-gray-200">
+                        <!-- COR: text-indigo-500 -->
+                        <svg class="w-12 h-12 mx-auto mb-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <p class="font-bold text-lg">Nenhum processo encontrado.</p>
                         <p class="text-sm">Clique em "Novo Processo" para começar a gerenciar suas perícias.</p>
                     </div>
                 `;
@@ -492,17 +556,25 @@
                     'Arquivado': 'bg-gray-100 text-gray-800'
                 }[process.status] || 'bg-gray-100 text-gray-800';
 
+                // Renderiza as tags
+                const tagsHtml = (process.tags || [])
+                    .map(tag => `<span class="inline-block bg-slate-200 text-slate-700 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">${tag}</span>`)
+                    .join('');
+
                 const processItem = document.createElement('div');
-                processItem.className = 'process-item p-5 bg-white rounded-xl shadow-lg border-t-4 border-cyan-400 hover:shadow-xl transition duration-200 cursor-pointer transform hover:scale-[1.01]';
+                // Melhoria: Sombra mais suave e animação de hover mais elegante
+                // COR: border-indigo-400
+                processItem.className = 'process-item p-5 bg-white rounded-xl shadow-lg border-t-4 border-indigo-400 hover:shadow-xl transition duration-200 cursor-pointer transform hover:translate-y-[-2px]';
                 processItem.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm text-gray-500 truncate">Cliente: <span class="font-medium text-gray-700">${process.clientName}</span></p>
+                            <p class="text-sm text-gray-500 font-medium truncate">Cliente: <span class="font-semibold text-gray-700">${process.clientName}</span></p>
                             <h3 class="text-xl font-bold text-gray-900 truncate mt-1">${process.caseNumber} - ${process.court}</h3>
+                            <div class="mt-2 mb-3">${tagsHtml || '<span class="text-xs text-gray-400">Sem tags.</span>'}</div>
                             <p class="text-gray-600 mt-2 line-clamp-2">${process.description || 'Sem descrição.'}</p>
                         </div>
                         <div class="ml-4 flex-shrink-0 text-right">
-                            <span class="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium ${statusColor}">
+                            <span class="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-semibold ${statusColor}">
                                 ${process.status}
                             </span>
                             <p class="text-xs text-gray-400 mt-2">Criado em: ${formatDate(process.createdAt)}</p>
@@ -519,6 +591,50 @@
             });
         }
 
+        function renderProfileForm() {
+            const profile = state.userProfile;
+            
+            mainContent.innerHTML = `
+                <!-- Melhoria: Sombra mais nítida e transição suave -->
+                <div class="bg-white p-8 rounded-xl shadow-xl hover:shadow-2xl transition duration-300">
+                    <!-- COR: text-indigo-700 -->
+                    <h2 class="text-3xl font-extrabold text-indigo-700 mb-6 border-b-2 border-indigo-200 pb-3">
+                        Meu Perfil Profissional
+                    </h2>
+                    <form id="profile-form" class="space-y-6">
+                        <p class="text-sm text-gray-500 mb-4">Essas informações são privadas e usadas apenas para personalização da sua experiência.</p>
+                        
+                        <div>
+                            <label for="profileName" class="block text-sm font-semibold text-gray-700 mb-1">Nome Completo (ou Social):</label>
+                            <!-- COR: focus:border-indigo-500 -->
+                            <input type="text" id="profileName" name="name" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150" value="${profile.name || ''}">
+                        </div>
+                        
+                        <div>
+                            <label for="registrationNumber" class="block text-sm font-semibold text-gray-700 mb-1">Registro Profissional (Ex: CRA, CRC, CREA, etc.):</label>
+                            <!-- COR: focus:border-indigo-500 -->
+                            <input type="text" id="registrationNumber" name="registrationNumber" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 bg-gray-50 transition duration-150" value="${profile.registrationNumber || ''}">
+                            <p class="text-xs text-gray-400 mt-1">Opcional. Usado para identificação no seu fluxo de trabalho.</p>
+                        </div>
+
+                        <div class="flex justify-end pt-4">
+                            <!-- COR: bg-indigo-600 -->
+                            <button type="submit" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl transition duration-200 transform hover:scale-[1.01]">
+                                Salvar Perfil
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            document.getElementById('profile-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+                saveProfile(data);
+            });
+        }
+
         function renderDashboard() {
             const total = state.processes.length;
             const pendente = state.processes.filter(p => p.status === 'Pendente').length;
@@ -526,22 +642,26 @@
             const concluido = state.processes.filter(p => p.status === 'Concluído').length;
 
             mainContent.innerHTML = `
-                <h2 class="text-3xl font-extrabold text-cyan-700 mb-8">Dashboard de Perícias</h2>
+                <!-- COR: text-indigo-700 -->
+                <h2 class="text-3xl font-extrabold text-indigo-700 mb-8">Dashboard de Perícias</h2>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    ${renderStatCard('Total de Processos', total, 'bg-cyan-100 text-cyan-800', 'border-cyan-400')}
+                    <!-- COR: bg-indigo-100 e border-indigo-400 -->
+                    ${renderStatCard('Total de Processos', total, 'bg-indigo-100 text-indigo-800', 'border-indigo-400')}
                     ${renderStatCard('Pendentes', pendente, 'bg-red-100 text-red-800', 'border-red-400')}
                     ${renderStatCard('Em Andamento', emAndamento, 'bg-yellow-100 text-yellow-800', 'border-yellow-400')}
                     ${renderStatCard('Concluídos', concluido, 'bg-green-100 text-green-800', 'border-green-400')}
                 </div>
                 
-                <div class="mt-10 p-6 bg-white rounded-xl shadow-xl">
+                <div class="mt-10 p-6 bg-white rounded-xl shadow-xl hover:shadow-2xl transition duration-300">
                     <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Ações Rápidas</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <button id="dash-new-process" class="flex items-center justify-center p-4 bg-cyan-600 text-white rounded-lg shadow-md hover:bg-cyan-700 transition duration-150 transform hover:scale-[1.02]">
+                        <!-- COR: bg-indigo-600 -->
+                        <button id="dash-new-process" class="flex items-center justify-center p-4 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.01]">
                             <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Adicionar Novo Processo
                         </button>
-                        <button id="dash-view-list" class="flex items-center justify-center p-4 bg-slate-500 text-white rounded-lg shadow-md hover:bg-slate-600 transition duration-150 transform hover:scale-[1.02]">
+                        <!-- Melhoria: Botão secundário mais clean -->
+                        <button id="dash-view-list" class="flex items-center justify-center p-4 border border-gray-300 bg-white text-slate-700 font-semibold rounded-lg shadow-lg hover:bg-gray-100 transition duration-200 transform hover:scale-[1.01]">
                             <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
                             Ver Lista Completa
                         </button>
@@ -560,9 +680,9 @@
         }
 
         function renderStatCard(title, value, bgColorClass, borderColorClass) {
-            // Usa os novos parâmetros de cor para manter o estilo
+            // Melhoria: Design do Card de Status mais proeminente e com melhor hover
             return `
-                <div class="bg-white p-6 rounded-xl shadow-xl border-l-4 ${borderColorClass} transition duration-300 transform hover:scale-[1.02]">
+                <div class="bg-white p-6 rounded-xl shadow-xl border-l-4 ${borderColorClass} transition duration-300 transform hover:scale-[1.02] hover:shadow-2xl">
                     <p class="text-sm font-medium text-gray-500">${title}</p>
                     <p class="mt-1 text-4xl font-extrabold ${bgColorClass.split(' ')[1].replace('text-', 'text-')}">${value}</p>
                 </div>
@@ -571,27 +691,22 @@
 
         // Função de Roteamento (Main Renderer)
         function renderView() {
-            // Remove as classes de destaque do menu
             document.querySelectorAll('.nav-button').forEach(btn => 
-                btn.classList.remove('bg-cyan-700', 'text-white')
+                // COR: bg-indigo-700
+                btn.classList.remove('bg-indigo-700', 'text-white')
             );
 
-            // Adiciona classe de destaque ao botão da view atual
             const currentNavView = state.currentView === 'newProcess' || state.currentView === 'editProcess' ? 'processList' : state.currentView;
             const activeNavButton = document.querySelector(`[data-view='${currentNavView}']`);
             if (activeNavButton) {
-                activeNavButton.classList.add('bg-cyan-700', 'text-white');
+                // COR: bg-indigo-700
+                activeNavButton.classList.add('bg-indigo-700', 'text-white');
             }
             
-            // --- ADIÇÃO DE ANIMAÇÃO DE FADE-IN NA TROCA DE TELA ---
             mainContent.classList.remove('fade-in');
-            // Força o reflow/repaint para reiniciar a animação
             void mainContent.offsetWidth; 
             mainContent.classList.add('fade-in');
-            // --- FIM DA ANIMAÇÃO ---
 
-
-            // Renderiza o conteúdo principal
             switch (state.currentView) {
                 case 'processList':
                     renderProcessList();
@@ -600,7 +715,15 @@
                     renderProcessForm(null);
                     break;
                 case 'editProcess':
-                    renderProcessForm(state.currentProcess);
+                    // Verifica se currentProcess existe antes de renderizar a edição
+                    const processToEdit = state.processes.find(p => p.id === state.currentProcess.id);
+                    if (processToEdit) {
+                        renderProcessForm(processToEdit);
+                    } else {
+                        state.currentView = 'processList';
+                        state.currentProcess = null;
+                        renderView();
+                    }
                     break;
                 case 'profile':
                     renderProfileForm();
@@ -613,27 +736,22 @@
         }
 
         // --- Configuração de Autenticação e Inicialização ---
-        // A autenticação é crucial para vincular os dados persistentes (Firestore) ao usuário correto.
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // Usuário autenticado (anônimo ou com token)
                 state.userId = user.uid;
                 state.isAuthReady = true;
                 console.log("Usuário autenticado:", state.userId);
                 
-                // Configura os listeners do Firestore
-                loadProfile(); // Carrega o perfil do usuário (persistência)
-                setupProcessListener(); // Carrega os processos (persistência)
+                loadProfile(); 
+                setupProcessListener(); 
 
             } else {
-                // Usuário deslogado - Tenta fazer login com token customizado ou anonimamente
                 if (initialAuthToken) {
                     try {
                         await signInWithCustomToken(auth, initialAuthToken);
                     } catch (error) {
                         console.error("Erro ao fazer login com token customizado:", error);
-                        // Falha no token customizado, tenta anonimamente como fallback
                         try {
                             await signInAnonymously(auth);
                         } catch (anonError) {
@@ -641,7 +759,6 @@
                         }
                     }
                 } else {
-                    // Sem token, faz login anônimo
                     try {
                         await signInAnonymously(auth);
                     } catch (error) {
@@ -654,17 +771,15 @@
 
         // --- Inicialização da UI (eventos de navegação e PIX) ---
         window.onload = () => {
-            // Configura os botões de navegação
             document.querySelectorAll('.nav-button').forEach(button => {
                 button.addEventListener('click', () => {
                     const view = button.getAttribute('data-view');
                     state.currentView = view;
-                    state.currentProcess = null; // Limpa o processo atual ao navegar
+                    state.currentProcess = null; 
                     renderView();
                 });
             });
 
-            // Configura o botão de cópia do PIX
             const pixButton = document.getElementById('pix-copy-button');
             if (pixButton) {
                 pixButton.addEventListener('click', () => {
@@ -674,7 +789,6 @@
                 });
             }
 
-            // Inicia a primeira renderização (será atualizada por onAuthStateChanged)
             renderView(); 
         };
 
@@ -735,57 +849,63 @@
 <body class="bg-slate-50">
 
     <div id="app-wrapper">
-        <!-- Barra Lateral de Navegação (Slate-800) -->
+        <!-- Barra Lateral de Navegação (Slate-800 - Design Limpo) -->
         <div class="fixed top-0 left-0 h-full w-64 bg-slate-800 shadow-2xl p-6 flex flex-col z-30">
-            <div class="text-3xl font-extrabold text-white mb-10 border-b border-slate-600 pb-3">
-                <svg class="inline w-7 h-7 mr-2 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            <!-- COR: text-indigo-400 -->
+            <div class="text-3xl font-extrabold text-white mb-10 border-b border-slate-700 pb-3">
+                <svg class="inline w-7 h-7 mr-2 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 Gerenciador Pro
             </div>
             
-            <nav class="space-y-3">
-                <!-- Hover: bg-slate-700. Active: bg-cyan-700 -->
-                <button data-view="dashboard" class="nav-button w-full flex items-center p-3 rounded-lg text-slate-100 hover:bg-slate-700 transition duration-150">
+            <nav class="space-y-2">
+                <!-- Melhoria: Botões de navegação mais espaçados e com hover claro -->
+                <button data-view="dashboard" class="nav-button w-full flex items-center p-3 rounded-lg text-slate-100 hover:bg-slate-700 transition duration-150 font-medium">
                     <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                     Dashboard
                 </button>
-                <button data-view="processList" class="nav-button w-full flex items-center p-3 rounded-lg text-slate-100 hover:bg-slate-700 transition duration-150">
+                <button data-view="processList" class="nav-button w-full flex items-center p-3 rounded-lg text-slate-100 hover:bg-slate-700 transition duration-150 font-medium">
                     <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
                     Processos
                 </button>
-                <button data-view="profile" class="nav-button w-full flex items-center p-3 rounded-lg text-slate-100 hover:bg-slate-700 transition duration-150">
+                <button data-view="profile" class="nav-button w-full flex items-center p-3 rounded-lg text-slate-100 hover:bg-slate-700 transition duration-150 font-medium">
                     <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0h4m-4 0v1"></path></svg>
                     Meu Perfil
                 </button>
                 <button data-view="newProcess" class="nav-button hidden w-full items-center p-3 rounded-lg text-slate-100 hover:bg-slate-700 transition duration-150"></button>
             </nav>
             
-            <div class="mt-auto pt-6 border-t border-slate-600">
+            <div class="mt-auto pt-6 border-t border-slate-700">
                 <p id="user-name-display" class="text-base font-semibold text-white">Carregando...</p>
-                <p class="text-xs text-slate-300 mt-1">ID Completo:</p>
-                <p id="user-id-display" class="text-xs text-slate-300 break-all">Carregando...</p>
-                <p class="text-xs text-cyan-400 mt-2">Dados salvos em nuvem (Firestore)</p>
+                <p class="text-xs text-slate-400 mt-1">ID Completo:</p>
+                <p id="user-id-display" class="text-xs text-slate-400 break-all">Carregando...</p>
+                <!-- COR: text-indigo-400 -->
+                <p class="text-xs text-indigo-400 mt-2">Dados salvos em nuvem (Firestore)</p>
                 <!-- CAMPO DE DESTAQUE DO AUTOR -->
                 <div class="mt-4 pt-3 border-t border-slate-700">
-                    <p class="text-xs font-medium text-cyan-300">Desenvolvido por você (Proprietário)</p>
+                    <!-- COR: text-indigo-300 -->
+                    <p class="text-xs font-medium text-indigo-300">Desenvolvido por Matheus Carlos</p>
                 </div>
             </div>
         </div>
 
         <!-- Conteúdo Principal -->
         <div id="main-app-content" class="ml-64 p-8">
-            <header class="mb-8 p-4 bg-white rounded-xl shadow-lg border-t-4 border-cyan-500">
-                <h1 class="text-4xl font-bold text-slate-800">Gerenciamento de Perícias</h1>
-                <p class="text-gray-500 mt-2">Acompanhe seus processos e não perca prazos.</p>
+            <!-- Header Profissional -->
+            <header class="mb-10 p-5 bg-white rounded-xl shadow-lg border-t-4 border-indigo-500">
+                <h1 class="text-4xl font-extrabold text-slate-800">Gerenciamento de Perícias</h1>
+                <p class="text-gray-500 mt-2 text-lg">Acompanhe seus processos e otimize seu fluxo de trabalho forense.</p>
             </header>
 
             <!-- Indicador de Carregamento -->
             <div id="loading-indicator" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white p-6 rounded-xl shadow-2xl flex items-center space-x-3">
-                    <svg class="animate-spin h-6 w-6 text-cyan-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <!-- COR: text-indigo-600 -->
+                    <svg class="animate-spin h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span class="text-cyan-600 font-semibold">Carregando dados...</span>
+                    <!-- COR: text-indigo-600 -->
+                    <span class="text-indigo-600 font-semibold">Carregando dados...</span>
                 </div>
             </div>
 
@@ -802,8 +922,10 @@
                     <h3 id="modal-title" class="text-xl font-bold text-gray-900 mb-4">Título do Modal</h3>
                     <div id="modal-body" class="text-gray-600 mb-6 space-y-3">Conteúdo do modal.</div>
                     <div class="flex justify-end space-x-3">
-                        <button id="modal-cancel-button" class="hidden px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-150 transform hover:scale-[1.02]">Cancelar</button>
-                        <button id="modal-confirm-button" class="px-4 py-2 bg-cyan-600 text-white font-semibold rounded-lg hover:bg-cyan-700 transition duration-150 transform hover:scale-[1.02]">OK</button>
+                        <!-- Melhoria: Botão Cancelar com sombra e hover mais profissional -->
+                        <button id="modal-cancel-button" class="hidden px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 shadow-sm transition duration-150">Cancelar</button>
+                        <!-- COR: bg-indigo-600 -->
+                        <button id="modal-confirm-button" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 shadow-md transition duration-150">OK</button>
                     </div>
                 </div>
             </div>
@@ -817,7 +939,7 @@
             <p class="text-center sm:text-left">
                 Apoie o desenvolvimento via PIX (Chave Celular):
             </p>
-            <!-- Botão com a chave PIX e função de cópia (AGORA COM ANIMAÇÃO DE PULSAÇÃO) -->
+            <!-- Botão com a chave PIX (MANTIDO VERDE - PIX) -->
             <button id="pix-copy-button" data-pix="87988593247" class="pulse-pix-animation flex items-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
                 <!-- Ícone de Coração (Suporte) -->
                 <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
