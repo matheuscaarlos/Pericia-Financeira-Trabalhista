@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Perícias</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos Base */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+            color: #1e293b;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        /* Estilos Modo Escuro */
+        .dark body {
+            background-color: #111827;
+            color: #d1d5db;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s;
+        }
+        .dark .card {
+            background-color: #1f2937;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+        }
+        /* Utilitários de cor e badge */
+        .dark .text-gray-700 { color: #d1d5db; }
+        .dark .text-gray-500 { color: #9ca3af; }
+        .dark .text-gray-800 { color: #f3f4f6; }
+        .dark .border { border-color: #374151 !important; }
+
+        .btn-primary {
+            background-color: #1e40af;
+            color: white;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #1e3a8a;
+        }
+        .btn-primary:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+        .status-badge-pendente { background-color: #fef3c7; color: #92400e; }
+        .status-badge-em-análise { background-color: #dbeafe; color: #1e40af; }
+        .status-badge-concluida { background-color: #d1fae5; color: #065f46; }
+        
+        /* Dark Mode Status Badges */
+        .dark .status-badge-pendente { background-color: #433005; color: #fef3c7; }
+        .dark .status-badge-em-análise { background-color: #0b1f4b; color: #dbeafe; }
+        .dark .status-badge-concluida { background-color: #032d1d; color: #d1fae5; }
+        
+        /* Animação simples para itens vencidos */
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+        }
+        .vencida-pulse {
+            animation: pulse-red 1.5s infinite;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="min-h-screen p-4 md:p-8 flex justify-center">
+        <div class="container-app w-full max-w-5xl">
+            
+            <!-- Cabeçalho e Toggle de Modo Escuro -->
+            <header class="text-center mb-8 flex flex-col items-center">
+                <div class="w-full flex justify-between items-center mb-2">
+                    <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 dark:text-blue-400">Gerenciador de Perícias</h1>
+                    
+                    <!-- Toggle de Modo Escuro -->
+                    <button id="dark-mode-toggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors shadow-md" title="Alternar Modo Escuro">
+                        <!-- Ícone do sol (Light Mode) -->
+                        <svg id="sun-icon" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <!-- Ícone da lua (Dark Mode) -->
+                        <svg id="moon-icon" class="h-6 w-6 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <p class="text-lg text-gray-600 dark:text-gray-400">Gestão de Casos Financeiros e Trabalhistas</p>
+                <div id="auth-info" class="mt-4 text-sm text-gray-500 p-2 card inline-block">
+                    Carregando autenticação...
+                </div>
+            </header>
+
+            <!-- Seção de Perfil do Usuário -->
+            <section class="mb-8 card p-6">
+                <h2 class="text-xl md:text-2xl font-bold mb-4 text-gray-700 dark:text-gray-300">Meu Perfil (Perito)</h2>
+                <div class="flex flex-col md:flex-row gap-6">
+                    <!-- Display do Perfil -->
+                    <div id="profile-display" class="w-full md:w-1/3 flex flex-col items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg transition-colors">
+                        <img id="profile-avatar" src="https://placehold.co/128x128/e0e7ff/1e40af?text=Perito" alt="Avatar do Perito" class="w-32 h-32 rounded-full object-cover mb-4 border-4 border-blue-300 dark:border-blue-500" onerror="this.onerror=null;this.src='https://placehold.co/128x128/e0e7ff/1e40af?text=Perito';">
+                        <p id="display-name" class="text-xl font-bold text-gray-800 dark:text-gray-100">Seu Nome</p>
+                        <p id="display-registry" class="text-sm text-gray-600 dark:text-gray-400">CRA/CRC: Não Informado</p>
+                    </div>
+
+                    <!-- Formulário de Edição do Perfil -->
+                    <form id="profile-form" class="w-full md:w-2/3 space-y-4">
+                        <div class="col-span-1">
+                            <label for="profileName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome Completo</label>
+                            <input type="text" id="profileName" placeholder="Seu Nome e Sobrenome" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
+                        </div>
+                        <div class="col-span-1">
+                            <label for="profileRegistry" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Registro Profissional (CRA/CRC)</label>
+                            <input type="text" id="profileRegistry" placeholder="Ex: CRA/XX 123456" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
+                        </div>
+                        <div class="col-span-1">
+                            <label for="profilePhotoUrl" class="block text-sm font-medium text-gray-700 dark:text-gray-300">URL da Foto de Perfil (Opcional)</label>
+                            <input type="url" id="profilePhotoUrl" placeholder="https://exemplo.com/minha-foto.jpg" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
+                        </div>
+                        <button type="submit" class="w-full btn-primary rounded-md p-2 font-semibold shadow-md hover:shadow-lg">
+                            Salvar Perfil
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- CONTEÚDO PRINCIPAL: Sempre visível -->
+            <div id="main-app-content">
+
+                <!-- Formulário de Nova Perícia -->
+                <section class="mb-8 card p-6">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-700 dark:text-gray-300">Adicionar Nova Perícia</h2>
+                    <form id="pericia-form" class="grid grid-cols-1 md:grid-cols-3 gap-4"> 
+                        
+                        <div class="col-span-1">
+                            <label for="caseNumber" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nº do Processo</label>
+                            <input type="text" id="caseNumber" required class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
+                            <div id="case-number-status" class="text-xs mt-1 h-4"></div> 
+                        </div>
+
+                        <div class="col-span-1">
+                            <label for="client" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente / Litigante</label>
+                            <input type="text" id="client" required class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
+                        </div>
+
+                        <div class="col-span-1">
+                            <label for="court" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tribunal (Vara)</label>
+                            <input type="text" id="court" required class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
+                        </div>
+                        
+                        <div class="col-span-1">
+                            <label for="type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</label>
+                            <select id="type" required class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
+                                <option value="Financeira">Financeira</option>
+                                <option value="Trabalhista">Trabalhista</option>
+                            </select>
+                        </div>
+
+                        <div class="col-span-1">
+                            <label for="intimationDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data da Intimação</label>
+                            <input type="date" id="intimationDate" required class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
+                        </div>
+
+                        <div class="col-span-1">
+                            <label for="dueDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Prazo de Entrega</label>
+                            <input type="date" id="dueDate" required class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 border">
+                        </div>
+                        
+                        <button type="submit" id="submit-pericia-btn" class="col-span-1 md:col-span-3 btn-primary rounded-md p-2 font-semibold shadow-md hover:shadow-lg">
+                            Adicionar Perícia
+                        </button>
+                    </form>
+                </section>
+
+                <!-- Dashboard de Estatísticas e Filtros -->
+                <section class="mb-6 p-4 card">
+                    <h3 class="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">Estatísticas e Filtros</h3>
+
+                    <!-- Contagem e Visualização (Dashboard) -->
+                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 space-y-4 md:space-y-0 md:space-x-8">
+                        <!-- Contagens -->
+                        <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-gray-600 dark:text-gray-400">
+                            <span class="text-blue-600 dark:text-blue-400">Total: <span id="total-pericia-count" class="font-bold">0</span></span>
+                            <span class="text-yellow-600 dark:text-yellow-400">Pendentes: <span id="pending-count" class="font-bold">0</span></span>
+                            <span class="text-green-600 dark:text-green-400">Concluídas: <span id="completed-count" class="font-bold">0</span></span>
+                        </div>
+
+                        <!-- Progresso Visual (Barra) -->
+                        <div class="w-full md:w-1/2">
+                            <div class="flex justify-between mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <span>Progresso Geral</span>
+                                <span id="progress-percentage">0% Concluído</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                                <div id="progress-bar" class="bg-green-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controles de Filtro -->
+                    <div class="pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-wrap justify-start gap-2">
+                        <select id="filter-court" class="rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 border text-sm">
+                            <option value="">Todos os Tribunais</option>
+                        </select>
+                        
+                        <select id="filter-type" class="rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 border text-sm">
+                            <option value="Financeira">Financeira</option>
+                            <option value="Trabalhista">Trabalhista</option>
+                        </select>
+                        <select id="filter-status" class="rounded-md border-gray-300 dark:bg-gray-800 dark:text-gray-100 p-2 border text-sm">
+                            <option value="">Todos os Status</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Em Análise">Em Análise</option>
+                            <option value="Concluída">Concluída</option>
+                        </select>
+                    </div>
+                </section>
+                
+                <!-- Alerta de Prazos -->
+                <div id="deadline-warning" class="hidden card p-4 mb-6 font-medium flex items-center">
+                    <!-- Conteúdo do alerta injetado via JS -->
+                </div>
+
+                <!-- Lista de Perícias -->
+                <section class="card p-4">
+                    <div id="pericias-list" class="space-y-4">
+                        <!-- Perícias serão injetadas aqui -->
+                        <p id="loading-message" class="text-center text-gray-500 dark:text-gray-400">Carregando perícias...</p>
+                    </div>
+                </section>
+
+            </div>
+            <!-- Fim do CONTEÚDO PRINCIPAL -->
+            
+            <!-- Mensagem de Erro/Sucesso -->
+            <div id="message-box" class="fixed bottom-4 right-4 p-3 rounded-lg text-white font-semibold shadow-xl hidden"></div>
+        </div>
+    </div>
+
+    <!-- CUSTOM CONFIRMATION MODAL -->
+    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="card p-6 w-11/12 md:w-full max-w-sm dark:border dark:border-gray-700">
+            <h3 class="text-xl font-bold mb-4 text-red-600 dark:text-red-400">Confirmação Necessária</h3>
+            <p id="modal-message" class="mb-6 text-gray-700 dark:text-gray-300">Tem certeza que deseja excluir esta perícia?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 font-medium transition-colors">Cancelar</button>
+                <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Imports e Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, setLogLevel, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variáveis Globais do Canvas (Obrigatórias)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-pericia-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth, userId = null;
+        let isAuthReady = false;
+        let lastPericiasData = []; 
+        let currentDeleteId = null; 
+        let debounceTimeout = null; 
+
+        // --- Constantes e Configuração ---
+        setLogLevel('Debug');
+        const DEADLINE_WARNING_DAYS = 7; 
+        const USER_PROFILE_COLLECTION = `artifacts/${appId}/users`;
+        const PERICIAS_COLLECTION = 'pericias';
+
+        // Referências ao DOM
+        const periciaForm = document.getElementById('pericia-form');
+        const periciasList = document.getElementById('pericias-list');
+        const authInfo = document.getElementById('auth-info');
+        const messageBox = document.getElementById('message-box');
+        const loadingMessage = document.getElementById('loading-message');
+        const filterType = document.getElementById('filter-type');
+        const filterStatus = document.getElementById('filter-status');
+        const filterCourt = document.getElementById('filter-court');
+        const progressBar = document.getElementById('progress-bar');
+        const progressPercentage = document.getElementById('progress-percentage');
+        const deadlineWarning = document.getElementById('deadline-warning');
+        const profileForm = document.getElementById('profile-form');
+        
+        // --- UTILS ---
+
+        // Exibe mensagens temporárias de sucesso/erro
+        function displayMessage(message, isError = false) {
+            messageBox.textContent = message;
+            messageBox.className = `fixed bottom-4 right-4 p-3 rounded-lg text-white font-semibold shadow-xl transition-opacity duration-300 ${isError ? 'bg-red-600' : 'bg-green-600'}`;
+            messageBox.style.opacity = 1;
+            messageBox.style.display = 'block';
+
+            setTimeout(() => {
+                messageBox.style.opacity = 0;
+                setTimeout(() => messageBox.style.display = 'none', 300);
+            }, 3000);
+        }
+
+        // Formata data para exibição (DD/MM/AAAA)
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            try {
+                const date = new Date(dateString + 'T00:00:00'); // Garante que a data é tratada como início do dia
+                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            } catch (e) {
+                console.error("Erro ao formatar data:", e);
+                return dateString;
+            }
+        }
+
+        // Retorna a classe CSS para o status da perícia
+        function getBadgeClass(status) {
+            switch (status) {
+                case 'Pendente': return 'status-badge-pendente';
+                case 'Em Análise': return 'status-badge-em-análise';
+                case 'Concluída': return 'status-badge-concluida';
+                default: return 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
+            }
+        }
+
+        // --- CUSTOM MODAL (for Delete Confirmation) ---
+        const customModal = document.getElementById('custom-modal');
+        const modalMessage = document.getElementById('modal-message');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        let modalResolve;
+
+        function showCustomModal(message) {
+            modalMessage.textContent = message;
+            customModal.classList.remove('hidden');
+            
+            return new Promise((resolve) => {
+                modalResolve = resolve;
+            });
+        }
+
+        modalCancelBtn.addEventListener('click', () => {
+            customModal.classList.add('hidden');
+            modalResolve(false);
+        });
+        // The modalConfirmBtn event is set dynamically in renderPericias to handle the deletion.
+
+
+        // --- DARK MODE ---
+        function setupDarkMode() {
+            const toggle = document.getElementById('dark-mode-toggle');
+            const sunIcon = document.getElementById('sun-icon');
+            const moonIcon = document.getElementById('moon-icon');
+
+            // Checks initial state
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            }
+
+            toggle.addEventListener('click', () => {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.theme = 'light';
+                    sunIcon.classList.remove('hidden');
+                    moonIcon.classList.add('hidden');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.theme = 'dark';
+                    sunIcon.classList.add('hidden');
+                    moonIcon.classList.remove('hidden');
+                }
+            });
+        }
+
+
+        // --- FIREBASE & AUTENTICAÇÃO ---
+
+        async function initializeFirebase() {
+            try {
+                if (!app) {
+                    app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                }
+
+                // Try to authenticate with token or anonymously
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                // Set up auth listener
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        isAuthReady = true;
+                        authInfo.innerHTML = `Logado como: <span class="font-bold text-blue-600 dark:text-blue-400">${userId}</span>`;
+                        
+                        listenForProfileUpdates();
+                        listenForPericias(); // Start listening for pericias immediately
+                    } else {
+                        userId = null;
+                        isAuthReady = true;
+                        authInfo.textContent = 'Não Autenticado';
+                        displayMessage('Erro: Falha na autenticação do usuário.', true);
+                    }
+                });
+
+            } catch (error) {
+                console.error("Erro ao inicializar Firebase ou autenticar:", error);
+                authInfo.textContent = 'ERRO: Falha ao carregar o app.';
+                displayMessage(`Erro de inicialização: ${error.message}`, true);
+            }
+        }
+
+
+        // --- PERFIL ---
+
+        // Escuta em tempo real as atualizações do perfil do usuário
+        function listenForProfileUpdates() {
+            if (!db || !userId) return;
+
+            const profileDocRef = doc(db, USER_PROFILE_COLLECTION, userId, 'profile', 'data');
+            
+            onSnapshot(profileDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const profileData = docSnap.data();
+                    updateProfileUI(profileData);
+                } else {
+                    // Initialize the profile if it doesn't exist
+                    const defaultProfile = { name: "Usuário Anônimo", registry: "", photoUrl: "" };
+                    updateProfileUI(defaultProfile);
+                }
+            }, (error) => {
+                console.error("Erro ao escutar updates de perfil:", error);
+                displayMessage("Erro ao carregar seu perfil. Veja o console.", true);
+            });
+        }
+
+        // Updates display and form fields for the profile
+        function updateProfileUI(profileData) {
+            document.getElementById('profileName').value = profileData.name || '';
+            document.getElementById('profileRegistry').value = profileData.registry || '';
+            document.getElementById('profilePhotoUrl').value = profileData.photoUrl || '';
+            
+            document.getElementById('display-name').textContent = profileData.name || 'Seu Nome';
+            document.getElementById('display-registry').textContent = `CRA/CRC: ${profileData.registry || 'Não Informado'}`;
+            document.getElementById('profile-avatar').src = profileData.photoUrl || 'https://placehold.co/128x128/e0e7ff/1e40af?text=Perito';
+        }
+
+        // Saves profile changes
+        async function saveProfile(e) {
+            e.preventDefault();
+            if (!userId) {
+                displayMessage("Usuário não autenticado. Tente recarregar a página.", true);
+                return;
+            }
+
+            const name = document.getElementById('profileName').value;
+            const registry = document.getElementById('profileRegistry').value;
+            const photoUrl = document.getElementById('profilePhotoUrl').value;
+            
+            if (!name) {
+                displayMessage("O nome é obrigatório.", true);
+                return;
+            }
+
+            try {
+                const profileDocRef = doc(db, USER_PROFILE_COLLECTION, userId, 'profile', 'data');
+                
+                // Use setDoc with merge: true
+                await setDoc(profileDocRef, { 
+                    name, 
+                    registry, 
+                    photoUrl,
+                }, { merge: true });
+
+                displayMessage('Perfil salvo com sucesso!');
+            } catch (error) {
+                console.error("Erro ao salvar perfil:", error);
+                displayMessage('Erro ao salvar perfil. Consulte o console.', true);
+            }
+        }
+
+
+        // --- PERÍCIAS (CRUD E LISTENER) ---
+
+        // Listens in real-time to the user's pericias collection
+        function listenForPericias() {
+            if (!db || !userId) {
+                loadingMessage.textContent = 'Aguardando autenticação do usuário...';
+                return;
+            }
+
+            // Path to the user's pericias collection
+            const userPericiasRef = collection(db, USER_PROFILE_COLLECTION, userId, PERICIAS_COLLECTION);
+            
+            // Prepare the query based on filters
+            let periciasQuery = query(userPericiasRef);
+            
+            // Apply filters
+            const statusFilter = filterStatus.value;
+            const typeFilter = filterType.value;
+            const courtFilter = filterCourt.value;
+
+            if (statusFilter) {
+                periciasQuery = query(periciasQuery, where('status', '==', statusFilter));
+            }
+            if (typeFilter) {
+                periciasQuery = query(periciasQuery, where('type', '==', typeFilter));
+            }
+            if (courtFilter) {
+                 periciasQuery = query(periciasQuery, where('court', '==', courtFilter));
+            }
+
+            loadingMessage.textContent = 'Carregando perícias...';
+
+            onSnapshot(periciasQuery, (snapshot) => {
+                const pericias = [];
+                snapshot.forEach(doc => {
+                    pericias.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Sort pericias by due date
+                pericias.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+                lastPericiasData = pericias;
+                
+                renderPericias(pericias);
+                updateDashboardStats(pericias);
+            }, (error) => {
+                console.error("Erro ao carregar perícias:", error);
+                loadingMessage.textContent = 'Erro ao carregar perícias. Veja o console.';
+                displayMessage('Erro ao carregar lista de perícias.', true);
+            });
+        }
+
+        // Adds or updates a pericia
+        async function addOrUpdatePericia(e) {
+            e.preventDefault();
+            if (!userId) return;
+
+            const caseNumber = document.getElementById('caseNumber').value;
+            const client = document.getElementById('client').value;
+            const court = document.getElementById('court').value;
+            const type = document.getElementById('type').value;
+            const intimationDate = document.getElementById('intimationDate').value;
+            const dueDate = document.getElementById('dueDate').value;
+            const submitButton = document.getElementById('submit-pericia-btn');
+
+            submitButton.disabled = true;
+
+            const periciaData = {
+                caseNumber,
+                client,
+                court,
+                type,
+                intimationDate,
+                dueDate,
+                status: 'Pendente', 
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                const userPericiasRef = collection(db, USER_PROFILE_COLLECTION, userId, PERICIAS_COLLECTION);
+                await addDoc(userPericiasRef, periciaData);
+                
+                displayMessage('Perícia adicionada com sucesso!');
+                periciaForm.reset();
+            } catch (error) {
+                console.error("Erro ao adicionar perícia:", error);
+                displayMessage('Erro ao adicionar perícia. Consulte o console.', true);
+            } finally {
+                submitButton.disabled = false;
+            }
+        }
+        
+        // Updates the status of a pericia
+        async function updatePericiaStatus(id, newStatus) {
+            if (!userId) return;
+            try {
+                const periciaDocRef = doc(db, USER_PROFILE_COLLECTION, userId, PERICIAS_COLLECTION, id);
+                await updateDoc(periciaDocRef, { status: newStatus });
+                displayMessage(`Status da perícia ${id.substring(0, 5)}... atualizado para ${newStatus}.`);
+            } catch (error) {
+                console.error("Erro ao atualizar status:", error);
+                displayMessage('Erro ao atualizar status. Consulte o console.', true);
+            }
+        }
+
+        // Deletes a pericia
+        async function deletePericia(id) {
+            if (!userId) return;
+            try {
+                const periciaDocRef = doc(db, USER_PROFILE_COLLECTION, userId, PERICIAS_COLLECTION, id);
+                await deleteDoc(periciaDocRef);
+                displayMessage(`Perícia ${id.substring(0, 5)}... excluída com sucesso.`);
+            } catch (error) {
+                console.error("Erro ao deletar perícia:", error);
+                displayMessage('Erro ao deletar perícia. Consulte o console.', true);
+            }
+        }
+
+        // Renders the list of pericias in the DOM
+        function renderPericias(pericias) {
+            periciasList.innerHTML = '';
+            loadingMessage.classList.add('hidden');
+            
+            if (pericias.length === 0) {
+                periciasList.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 p-8">Nenhuma perícia encontrada. Adicione uma nova!</p>';
+                return;
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); 
+            const warningLimit = new Date();
+            warningLimit.setDate(today.getDate() + DEADLINE_WARNING_DAYS);
+
+            let hasWarning = false;
+            let warningHtml = '';
+
+            pericias.forEach(pericia => {
+                const dueDate = new Date(pericia.dueDate + 'T00:00:00');
+                const isOverdue = pericia.status !== 'Concluída' && dueDate < today;
+                const isApproachingDeadline = pericia.status !== 'Concluída' && dueDate >= today && dueDate <= warningLimit;
+                
+                let cardClasses = 'card p-4 flex flex-col md:flex-row justify-between items-start md:items-center transition-shadow duration-300 hover:shadow-lg';
+                if (isOverdue) {
+                    cardClasses += ' border-l-8 border-red-500 vencida-pulse';
+                    warningHtml += `<p class="text-red-700 dark:text-red-400">🚨 Processo ${pericia.caseNumber} está vencido desde ${formatDate(pericia.dueDate)}.</p>`;
+                    hasWarning = true;
+                } else if (isApproachingDeadline) {
+                    cardClasses += ' border-l-8 border-yellow-500';
+                    const daysLeft = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+                    warningHtml += `<p class="text-yellow-700 dark:text-yellow-400">⚠️ Processo ${pericia.caseNumber} vence em ${daysLeft} dias (${formatDate(pericia.dueDate)}).</p>`;
+                    hasWarning = true;
+                }
+
+                const statusBadge = `<span class="px-3 py-1 text-xs font-semibold rounded-full ${getBadgeClass(pericia.status)}">${pericia.status}</span>`;
+                
+                const periciaItem = document.createElement('div');
+                periciaItem.className = cardClasses;
+                periciaItem.innerHTML = `
+                    <div class="mb-4 md:mb-0 w-full md:w-3/5">
+                        <div class="flex items-center space-x-2">
+                             ${statusBadge}
+                             <span class="text-xs text-gray-500 dark:text-gray-400">${pericia.type}</span>
+                        </div>
+                        <h3 class="text-xl font-bold mt-1 text-gray-800 dark:text-gray-100">${pericia.caseNumber}</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Cliente: ${pericia.client} | Tribunal: ${pericia.court}</p>
+                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-1">
+                            Prazo Final: <span class="font-bold">${formatDate(pericia.dueDate)}</span> (Intimação: ${formatDate(pericia.intimationDate)})
+                        </p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-wrap gap-2 w-full md:w-2/5 justify-end">
+                        ${pericia.status !== 'Concluída' ? `<button data-id="${pericia.id}" data-status="Concluída" class="status-btn px-3 py-1 text-sm rounded-md bg-green-500 text-white hover:bg-green-600 transition-colors">Concluir</button>` : ''}
+                        ${pericia.status !== 'Em Análise' ? `<button data-id="${pericia.id}" data-status="Em Análise" class="status-btn px-3 py-1 text-sm rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors">Em Análise</button>` : ''}
+                        
+                        <button data-id="${pericia.id}" class="delete-btn px-3 py-1 text-sm rounded-md bg-red-500 text-white hover:bg-red-600 transition-colors">
+                            <svg class="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m10 0h-16"></path></svg>
+                        </button>
+                    </div>
+                `;
+                periciasList.appendChild(periciaItem);
+            });
+
+            // Display or hide deadline warning
+            if (hasWarning) {
+                deadlineWarning.classList.remove('hidden');
+                deadlineWarning.innerHTML = `
+                    <svg class="w-6 h-6 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.372 17c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    <div class="space-y-1">
+                        ${warningHtml}
+                    </div>
+                `;
+            } else {
+                deadlineWarning.classList.add('hidden');
+                deadlineWarning.innerHTML = '';
+            }
+
+            // Add listeners to status buttons
+            document.querySelectorAll('.status-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const id = e.currentTarget.dataset.id;
+                    const status = e.currentTarget.dataset.status;
+                    updatePericiaStatus(id, status);
+                });
+            });
+
+            // Add listeners to delete buttons
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    currentDeleteId = e.currentTarget.dataset.id;
+                    const caseNum = pericias.find(p => p.id === currentDeleteId)?.caseNumber || 'este item';
+                    
+                    const confirmed = await showCustomModal(`Você realmente deseja excluir a perícia do processo ${caseNum}? Esta ação é irreversível.`);
+                    
+                    if (confirmed) {
+                        deletePericia(currentDeleteId);
+                    }
+                    customModal.classList.add('hidden');
+                });
+            });
+            
+            // Set up modal confirmation button
+            modalConfirmBtn.onclick = () => {
+                customModal.classList.add('hidden');
+                if (modalResolve) {
+                    modalResolve(true);
+                }
+            };
+        }
+
+        // Updates dashboard stats and court filters
+        function updateDashboardStats(pericias) {
+            const total = pericias.length;
+            const completed = pericias.filter(p => p.status === 'Concluída').length;
+            const pending = pericias.filter(p => p.status === 'Pendente').length;
+            
+            const progress = total > 0 ? (completed / total) * 100 : 0;
+
+            document.getElementById('total-pericia-count').textContent = total;
+            document.getElementById('completed-count').textContent = completed;
+            document.getElementById('pending-count').textContent = pending;
+            
+            progressBar.style.width = `${progress}%`;
+            progressPercentage.textContent = `${Math.round(progress)}% Concluído`;
+
+            // Update court filter options
+            const courtSet = new Set(pericias.map(p => p.court).filter(c => c));
+            const selectedCourt = filterCourt.value;
+
+            filterCourt.innerHTML = '<option value="">Todos os Tribunais</option>';
+            courtSet.forEach(court => {
+                const option = document.createElement('option');
+                option.value = court;
+                option.textContent = court;
+                if (court === selectedCourt) {
+                    option.selected = true;
+                }
+                filterCourt.appendChild(option);
+            });
+        }
+
+
+        // --- GENERAL EVENT LISTENERS ---
+
+        periciaForm.addEventListener('submit', addOrUpdatePericia);
+        profileForm.addEventListener('submit', saveProfile);
+
+        // Listener for filters (using debounce)
+        [filterType, filterStatus, filterCourt].forEach(filterEl => {
+            filterEl.addEventListener('change', () => {
+                if (debounceTimeout) {
+                    clearTimeout(debounceTimeout);
+                }
+                debounceTimeout = setTimeout(() => {
+                    listenForPericias();
+                }, 300);
+            });
+        });
+
+        // Initialize application
+        window.onload = () => {
+            setupDarkMode();
+            initializeFirebase();
+        };
+
+    </script>
+</body>
+</html>
