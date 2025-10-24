@@ -131,7 +131,7 @@
     <header class="mb-8 p-4 bg-white rounded-xl shadow-lg">
         
         <p class="text-xs text-gray-400 text-right mb-4 border-b pb-2">
-            Desenvolvido por <span class="text-emerald-600 font-semibold">Matheus Carlos</span>
+            Ferramenta de monitoramento local para Peritos(as)
         </p>
 
         <div class="flex flex-col md:flex-row justify-between items-center mb-6">
@@ -146,13 +146,16 @@
         </div>
 
         <!-- Card de Perfil/Credenciais -->
-        <div id="profileCard" class="flex flex-wrap items-center p-4 bg-gray-50 rounded-lg border border-gray-200 transition duration-300 hover:shadow-md cursor-pointer" onclick="openCredentialsModal()">
+        <div id="profileCard" class="flex items-center p-4 bg-gray-50 rounded-lg border border-gray-200 transition duration-300 hover:shadow-md cursor-pointer" onclick="openCredentialsModal()">
             
-            <img src="https://placehold.co/64x64/D1D5DB/6B7280?text=..." alt="Ícone de Carregamento" class="w-16 h-16 rounded-full profile-icon border-4 border-gray-400 mr-4 animate-pulse">
+            <img src="https://placehold.co/64x64/10B981/ffffff?text=P" alt="Ícone de Perfil" class="w-16 h-16 rounded-full profile-icon border-4 border-emerald-500 mr-4">
             <div>
-                <h2 class="text-xl font-bold text-gray-900">Conectando ao Sistema...</h2>
-                <p class="text-sm text-gray-500">Autenticando usuário...</p>
+                <h2 class="text-xl font-bold text-gray-900">Carregando Perfil...</h2>
+                <p class="text-sm text-gray-500">Aguarde</p>
             </div>
+            <button onclick="openCredentialsModal(event)" class="text-blue-500 hover:text-blue-700 transition ml-auto text-sm">
+                Editar Credenciais
+            </button>
         </div>
     </header>
 
@@ -282,26 +285,12 @@
     <!-- Mensagem de Feedback (Substituto para alert) -->
     <div id="feedbackMessage" class="fixed bottom-4 right-4 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 opacity-0 hidden z-50" style="min-width: 250px;"></div>
 
-    <script type="module">
-        // Importações do Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, deleteDoc, query, onSnapshot, addDoc, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Variáveis globais para dados
+    <script>
+        // Variáveis globais para armazenar os dados e elementos DOM
         let processes = [];
         let userCredentials = {};
-        
-        // Firebase Globals
-        let app, db, auth;
-        let userId = null;
-        // Variáveis globais fornecidas pelo ambiente (MANDATORY USE)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // Helpers de path para Firestore (garante o isolamento de dados por usuário)
-        const getUserProcessesCollection = (uid) => collection(db, `artifacts/${appId}/users/${uid}/processes`);
-        const getUserProfileDoc = (uid) => doc(db, `artifacts/${appId}/users/${uid}/profile/credentials`);
-
+        const STORAGE_KEY = 'periciaTrackerProcesses';
+        const CREDENTIALS_KEY = 'periciaTrackerCredentials';
 
         // Variáveis globais para as referências DOM, inicializadas em window.onload
         let processListContainer = null;
@@ -328,7 +317,34 @@
             return diffDays;
         }
 
-        // --- Gestão de Credenciais (Firebase) ---
+        // --- Gestão de Dados (localStorage) ---
+
+        function loadProcesses() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            processes = data ? JSON.parse(data) : [];
+            // Garante que os IDs sejam tratados como números
+            processes.forEach(p => p.id = Number(p.id));
+        }
+
+        function saveProcesses() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(processes));
+        }
+
+        // --- Gestão de Credenciais ---
+
+        function loadCredentials() {
+            const data = localStorage.getItem(CREDENTIALS_KEY);
+            // iconUrl pode ser uma URL externa ou uma string Base64
+            userCredentials = data ? JSON.parse(data) : {
+                fullName: 'Nome do Perito(a)',
+                iconUrl: 'https://placehold.co/64x64/10B981/ffffff?text=P',
+                registration: 'CRA/CRC 000000'
+            };
+        }
+
+        function saveCredentials() {
+            localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(userCredentials));
+        }
 
         function renderCredentials() {
             const profileCard = document.getElementById('profileCard');
@@ -346,7 +362,6 @@
                 <button onclick="openCredentialsModal(event)" class="text-blue-500 hover:text-blue-700 transition ml-auto text-sm">
                     Editar Credenciais
                 </button>
-                <p class="text-xs text-gray-400 mt-2 w-full text-left">ID: ${userId}</p>
             `;
         }
 
@@ -354,14 +369,10 @@
             if (event) {
                 event.stopPropagation();
             }
-            if (!userId) {
-                showFeedback('Aguarde a autenticação do usuário.', 'bg-yellow-500');
-                return;
-            }
 
             const modal = document.getElementById('credentialsModal');
-            document.getElementById('inputFullName').value = userCredentials.fullName || '';
-            document.getElementById('inputRegistration').value = userCredentials.registration || '';
+            document.getElementById('inputFullName').value = userCredentials.fullName;
+            document.getElementById('inputRegistration').value = userCredentials.registration;
             const fileInput = document.getElementById('inputProfileImageFile');
             if (fileInput) fileInput.value = ''; 
             
@@ -375,14 +386,9 @@
             modal.classList.remove('flex');
         }
 
-        // Função para ler o arquivo (Base64) e salvar as credenciais no Firestore
-        async function readAndSaveProfileImage(file, fullName, registration) {
-            if (!userId) {
-                showFeedback('Usuário não autenticado. Tente recarregar.', 'bg-red-500');
-                return;
-            }
-
-            // Limite de 1MB para armazenamento no Firestore
+        // Função para ler o arquivo e salvar as credenciais de forma assíncrona (com Base64)
+        function readAndSaveProfileImage(file, fullName, registration) {
+            // Limite de 1MB para armazenamento no localStorage
             const MAX_SIZE = 1048576; 
             
             if (file && file.size > MAX_SIZE) {
@@ -390,33 +396,34 @@
                 return;
             }
 
-            // Core function to save to Firestore
-            const saveToFirestore = async (iconUrl) => {
-                userCredentials = { fullName, registration, iconUrl };
-                try {
-                    await setDoc(getUserProfileDoc(userId), userCredentials);
-                    renderCredentials();
-                    closeCredentialsModal();
-                    showFeedback('Credenciais salvas com sucesso!', 'bg-emerald-500');
-                } catch (error) {
-                    console.error("Erro ao salvar credenciais no Firestore:", error);
-                    showFeedback('Erro ao salvar credenciais. Tente novamente.', 'bg-red-500');
-                }
-            };
-
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const base64Image = e.target.result;
-                    saveToFirestore(base64Image); // Salva Base64 no Firestore
+                    // Salva credenciais com a nova Base64
+                    userCredentials = { fullName, registration, iconUrl: base64Image };
+                    saveCredentials();
+                    renderCredentials();
+                    closeCredentialsModal();
+                    showFeedback('Credenciais e imagem salvas com sucesso!', 'bg-emerald-500');
                 };
                 reader.onerror = function() {
                     showFeedback('Erro ao ler o arquivo de imagem.', 'bg-red-500');
                 };
                 reader.readAsDataURL(file); // Lê o arquivo como Base64
             } else {
+                // Se nenhum arquivo novo foi selecionado, mantém o valor existente ou o placeholder padrão
                 const currentIcon = userCredentials.iconUrl || 'https://placehold.co/64x64/10B981/ffffff?text=P';
-                saveToFirestore(currentIcon); // Mantém o ícone atual se nenhum arquivo for selecionado
+
+                userCredentials = { 
+                    fullName, 
+                    registration, 
+                    iconUrl: currentIcon
+                };
+                saveCredentials();
+                renderCredentials();
+                closeCredentialsModal();
+                showFeedback('Credenciais salvas com sucesso!', 'bg-emerald-500');
             }
         }
 
@@ -430,13 +437,9 @@
             readAndSaveProfileImage(imageFile, fullName, registration);
         });
 
-        // --- Funções do Modal e Formulário de Processos (Firebase) ---
+        // --- Funções do Modal e Formulário de Processos ---
 
         function openProcessModal(processId = null) {
-            if (!userId) {
-                showFeedback('Aguarde a conexão com o banco de dados.', 'bg-yellow-500');
-                return;
-            }
             const modal = document.getElementById('processModal');
             const form = document.getElementById('processForm');
             const modalTitle = document.getElementById('modalTitle');
@@ -471,12 +474,8 @@
             document.getElementById('processForm').reset();
         }
 
-        document.getElementById('processForm').addEventListener('submit', async function(event) {
+        document.getElementById('processForm').addEventListener('submit', function(event) {
             event.preventDefault();
-            if (!userId) {
-                showFeedback('Usuário não autenticado. Tente recarregar.', 'bg-red-500');
-                return;
-            }
             
             const id = document.getElementById('processId').value;
             const processNumber = document.getElementById('inputProcessNumber').value.trim();
@@ -486,7 +485,7 @@
             const judicialDistrict = document.getElementById('inputJudicialDistrict').value.trim();
             const description = document.getElementById('inputDescription').value.trim();
             
-            const processData = {
+            const newProcess = {
                 processNumber,
                 type,
                 deadline,
@@ -496,56 +495,46 @@
                 lastUpdate: new Date().toISOString().split('T')[0] // Data atual de atualização
             };
 
-            try {
-                if (id) {
-                    // Edição: usa setDoc para atualizar o documento existente
-                    const processRef = doc(db, `artifacts/${appId}/users/${userId}/processes`, id);
-                    await setDoc(processRef, processData, { merge: true }); 
+            if (id) {
+                // Edição
+                const index = processes.findIndex(p => p.id === Number(id));
+                if (index !== -1) {
+                    // Mantém o status e ID original
+                    processes[index] = { ...processes[index], ...newProcess };
                     showFeedback('Processo atualizado com sucesso!', 'bg-blue-500');
-                } else {
-                    // Novo Processo: usa addDoc para criar um novo documento e obter um ID automático
-                    processData.status = 'Aberto'; // Status inicial
-                    await addDoc(getUserProcessesCollection(userId), processData);
-                    showFeedback('Novo processo adicionado!', 'bg-emerald-500');
                 }
-            } catch (error) {
-                console.error("Erro ao salvar processo no Firestore:", error);
-                showFeedback('Erro ao salvar o processo. Tente novamente.', 'bg-red-500');
+            } else {
+                // Novo Processo
+                newProcess.id = Date.now(); // ID único simples
+                newProcess.status = 'Aberto'; // Status inicial
+                processes.push(newProcess);
+                showFeedback('Novo processo adicionado!', 'bg-emerald-500');
             }
-            
+
+            saveProcesses();
+            renderProcesses();
             closeProcessModal();
         });
 
-        // --- Funções de Ação (Status/Delete - Firebase) ---
+        // --- Funções de Ação (Status/Delete) ---
 
-        async function updateProcessStatus(id, newStatus) {
-            if (!userId) return;
-            const processRef = doc(db, `artifacts/${appId}/users/${userId}/processes`, id);
-            
-            try {
-                await setDoc(processRef, { 
-                    status: newStatus, 
-                    lastUpdate: new Date().toISOString().split('T')[0]
-                }, { merge: true });
-                
-                showFeedback(`Status do processo ${id} alterado para "${newStatus}".`, 'bg-blue-500');
-            } catch (error) {
-                console.error("Erro ao atualizar status:", error);
-                showFeedback("Erro ao atualizar status no Firestore.", 'bg-red-500');
+        function updateProcessStatus(id, newStatus) {
+            const process = processes.find(p => p.id === id);
+            if (process) {
+                process.status = newStatus;
+                process.lastUpdate = new Date().toISOString().split('T')[0];
+                saveProcesses();
+                renderProcesses();
+                showFeedback(`Status do processo ${process.processNumber} alterado para "${newStatus}".`, 'bg-blue-500');
             }
         }
 
-        async function deleteProcess(id) {
-            if (!userId) return;
-            const processRef = doc(db, `artifacts/${appId}/users/${userId}/processes`, id);
+        function deleteProcess(id) {
+            processes = processes.filter(p => p.id !== id);
+            saveProcesses();
+            renderProcesses();
+            showFeedback('Processo excluído com sucesso.', 'bg-red-500');
             
-            try {
-                await deleteDoc(processRef);
-                showFeedback('Processo excluído com sucesso.', 'bg-red-500');
-            } catch (error) {
-                console.error("Erro ao excluir processo:", error);
-                showFeedback("Erro ao excluir processo no Firestore.", 'bg-red-500');
-            }
         }
 
         // --- Renderização e Filtros ---
@@ -624,7 +613,7 @@
                 const isUrgent = process.statusClass.includes('deadline-due');
                 
                 const cardClasses = isUrgent
-                    ? 'border-2 border-red-500 deadline-due' 
+                    ? 'border-2 border-red-500 deadline-due' // ADICIONADO: Classe de pulso ao card
                     : 'border border-gray-100';
 
                 // LÓGICA ATUALIZADA: Uso de Prazo AMANHÃ!
@@ -682,17 +671,17 @@
 
                         <!-- Ações -->
                         <div class="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
-                            <button onclick="openProcessModal('${process.id}')" class="text-blue-600 hover:text-blue-800 text-sm font-medium transition flex items-center">
+                            <button onclick="openProcessModal(${process.id})" class="text-blue-600 hover:text-blue-800 text-sm font-medium transition flex items-center">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-7l1.414 1.414M16 4l-1.414 1.414m-1.414 1.414l-4.243 4.243m-4.243 4.243l1.414 1.414m-1.414-1.414l4.243-4.243m4.243-4.243l-1.414-1.414m1.414 1.414l-4.243 4.243m-4.243-4.243l-1.414 1.414m-1.414 1.414l-4.243 4.243"></path></svg>
                                 Editar
                             </button>
                             ${process.status !== 'Concluído' ? 
-                                `<button onclick="updateProcessStatus('${process.id}', 'Concluído')" class="text-emerald-600 hover:text-emerald-800 text-sm font-medium transition flex items-center ml-4">
+                                `<button onclick="updateProcessStatus(${process.id}, 'Concluído')" class="text-emerald-600 hover:text-emerald-800 text-sm font-medium transition flex items-center ml-4">
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                     Concluir
                                 </button>` : ''
                             }
-                            <button onclick="deleteProcess('${process.id}')" class="text-red-600 hover:text-red-800 text-sm font-medium transition flex items-center ml-4">
+                            <button onclick="deleteProcess(${process.id})" class="text-red-600 hover:text-red-800 text-sm font-medium transition flex items-center ml-4">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                 Excluir
                             </button>
@@ -705,27 +694,37 @@
         
         // --- Funções de Cópia PIX ---
 
+        /**
+         * Função para copiar a chave PIX para a área de transferência.
+         * Usa o método document.execCommand('copy') como fallback seguro 
+         * para ambientes de iframe.
+         */
         function copyPixKey() {
             const pixKeyElement = document.getElementById('pix-key-display');
             const pixKey = pixKeyElement.textContent.trim();
             
+            // Cria um campo de texto temporário
             const tempInput = document.createElement('textarea');
             tempInput.value = pixKey;
             document.body.appendChild(tempInput);
             
+            // Seleciona o texto
             tempInput.select();
-            tempInput.setSelectionRange(0, 99999); 
+            tempInput.setSelectionRange(0, 99999); // Para mobile
             
             let success = false;
             try {
+                // Tenta copiar
                 success = document.execCommand('copy');
             } catch (err) {
                 console.error('Falha ao tentar copiar a chave PIX:', err);
             }
             
+            // Remove o campo temporário
             document.body.removeChild(tempInput);
 
             if (success) {
+                // Exibe a mensagem de confirmação
                 showPixConfirmation();
             } else {
                 console.error('Não foi possível copiar automaticamente.');
@@ -733,16 +732,22 @@
             }
         }
 
+        /**
+         * Exibe a mensagem de confirmação de cópia do PIX e remove o pulso.
+         */
         function showPixConfirmation() {
             const messageElement = document.getElementById('confirmation-message');
             const button = document.getElementById('copy-button');
             
+            // Torna a mensagem visível
             messageElement.classList.remove('opacity-0');
             messageElement.classList.add('opacity-100');
             
+            // Remove o efeito pulsante da caixa principal temporariamente para indicar sucesso
             button.classList.remove('pix-pulse-effect');
             button.textContent = 'Copiado!';
 
+            // Timeout para esconder a mensagem e restaurar o pulso e texto do botão
             setTimeout(() => {
                 messageElement.classList.remove('opacity-100');
                 messageElement.classList.add('opacity-0');
@@ -768,63 +773,10 @@
                 setTimeout(() => feedbackEl.classList.add('hidden'), 300);
             }, 3000);
         }
-        
-        // --- Funções de Carga de Dados (Firestore) ---
-        async function loadData() {
-            if (!userId) return;
-
-            // 1. Carregar Credenciais
-            try {
-                const docSnap = await getDoc(getUserProfileDoc(userId));
-                if (docSnap.exists()) {
-                    userCredentials = docSnap.data();
-                } else {
-                    // Usa o padrão se não existir, e salva para criar o documento
-                    userCredentials = {
-                        fullName: 'Nome do Perito(a)',
-                        iconUrl: 'https://placehold.co/64x64/10B981/ffffff?text=P',
-                        registration: 'CRA/CRC 000000'
-                    };
-                    // Cria o documento inicial com dados padrões
-                    await setDoc(getUserProfileDoc(userId), userCredentials, { merge: true });
-                }
-                renderCredentials();
-            } catch (error) {
-                console.error("Erro ao carregar credenciais:", error);
-                showFeedback("Erro ao carregar credenciais do perfil.", 'bg-red-500');
-            }
-
-            // 2. Listener de Processos (Real-time)
-            const q = query(getUserProcessesCollection(userId));
-            
-            onSnapshot(q, (snapshot) => {
-                processes = [];
-                snapshot.forEach((doc) => {
-                    // Garante que o ID do processo seja o ID do documento Firestore
-                    const processData = doc.data();
-                    processes.push({ id: doc.id, ...processData });
-                });
-                
-                // Re-renderiza a lista completa com os novos dados em tempo real
-                renderProcesses(); 
-                showFeedback(`Dados de ${snapshot.size} processos atualizados em tempo real.`, 'bg-gray-700');
-            }, (error) => {
-                console.error("Erro ao configurar listener de processos:", error);
-                showFeedback("Erro de conexão em tempo real com processos.", 'bg-red-500');
-            });
-        }
-
 
         // --- Inicialização ---
-        
-        // FIX: Expõe as funções globais para que os atributos 'onclick' do HTML possam acessá-las
-        window.openProcessModal = openProcessModal;
-        window.closeProcessModal = closeProcessModal;
-        window.updateProcessStatus = updateProcessStatus;
-        window.deleteProcess = deleteProcess;
-        window.openCredentialsModal = openCredentialsModal;
-        window.closeCredentialsModal = closeCredentialsModal;
-        window.copyPixKey = copyPixKey;
+
+        // Função de dados de exemplo removida conforme solicitado.
 
         window.onload = function() {
             // 1. Inicializa as referências DOM globais
@@ -834,43 +786,25 @@
             filterStatusEl = document.getElementById('filterStatus');
             searchQueryEl = document.getElementById('searchQuery');
             
-            // 2. Inicializa Firebase
-            try {
-                setLogLevel('Debug');
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                // 3. Autenticação e Carga de Dados
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        await loadData();
-                    } else {
-                        // Tenta autenticar
-                        try {
-                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                await signInWithCustomToken(auth, __initial_auth_token);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
-                        } catch (error) {
-                            console.error("Erro na autenticação:", error);
-                            showFeedback(`Falha na autenticação: ${error.message}`, 'bg-red-500');
-                        }
-                    }
-                });
-
-            } catch (e) {
-                console.error("Erro ao inicializar Firebase:", e);
-                showFeedback("Erro Crítico: Não foi possível inicializar o sistema de dados.", 'bg-red-500');
-            }
+            // 2. Carrega Dados (Credenciais e Processos)
+            loadCredentials();
+            loadProcesses();
+            // seedData() foi removido daqui. O aplicativo agora começa vazio se o localStorage estiver limpo.
+            
+            // 3. Renderiza a interface
+            renderCredentials(); 
             
             // 4. Adiciona os Event Listeners (usando as referências globais)
             filterTypeEl?.addEventListener('change', renderProcesses);
             filterStatusEl?.addEventListener('change', renderProcesses);
             searchQueryEl?.addEventListener('keyup', renderProcesses);
+
+            // 5. Renderização Inicial dos processos
+            if (processListContainer && noProcessesMessage) {
+                renderProcesses();
+            } else {
+                console.error("Erro fatal: Não foi possível encontrar os containers principais do DOM na inicialização.");
+            }
         }
     </script>
 </body>
