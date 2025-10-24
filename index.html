@@ -1,11 +1,832 @@
-pericias/
-│
-├─ db.php
-├─ index.php
-├─ add.php
-├─ edit.php
-├─ view.php
-├─ delete.php
-├─ css/
-│   └─ style.css
-└─ uploads/
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoramento de Perícias - Perito</title>
+    
+    <!-- Carregamento do Tailwind CSS via CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #10B981; /* Emerald Green */
+            --secondary-color: #3B82F6; /* Blue */
+        }
+        /* Ajuste no padding do corpo para acomodar a barra PIX fixa no topo */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            padding-top: 4rem; /* Aumentado para acomodar o PIX mais destacado */
+        }
+        .card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        /* Definição de cores customizadas para o PIX/Doação */
+        .pix-gradient {
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%); /* Verde/Esmeralda */
+        }
+        /* Animação do pulso de sombra (verde) para PIX - MAIS EVIDENTE */
+        @keyframes pulse-green-pix {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7), 0 0 15px rgba(16, 185, 129, 0.5); /* Sombra inicial e glow */
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(16, 185, 129, 0), 0 0 25px rgba(16, 185, 129, 0.8); /* Pulso maior e glow mais forte */
+            }
+        }
+        .pix-pulse-effect {
+            animation: pulse-green-pix 2s infinite cubic-bezier(0.4, 0, 0.6, 1); /* Ajustado timing */
+        }
+
+        /* Classes existentes */
+        .deadline-due {
+            animation: pulse-red 1.5s infinite;
+        }
+        .status-badge {
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+        .status-aberto { background-color: #FCD34D; color: #92400E; } /* Amarelo */
+        .status-concluido { background-color: #34D399; color: #065F46; } /* Verde */
+        .status-prazo-final { background-color: #F87171; color: #991B1B; } /* Vermelho */
+
+        /* Animação do pulso de sombra (vermelho) */
+        @keyframes pulse-red {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.7), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            70% {
+                box-shadow: 0 0 0 8px rgba(248, 113, 113, 0), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+        }
+        /* Estilos específicos para o modal e formulário */
+        .modal-bg { background-color: rgba(0, 0, 0, 0.5); }
+        input[type="text"], input[type="date"], select, textarea, input[type="file"] {
+            border: 1px solid #D1D5DB;
+            padding: 10px;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+            outline: none;
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #059669;
+        }
+    </style>
+</head>
+
+<body class="px-4 md:px-8 pb-4 md:pb-8">
+
+    <!-- Barra de Apoio PIX Fixa no Topo -->
+    <div id="pix-bar" class="fixed top-0 left-0 right-0 z-[100] bg-emerald-700 border-b-2 border-emerald-500 shadow-xl p-2">
+        <div class="container mx-auto flex items-center justify-center sm:justify-between max-w-7xl px-0 sm:px-4 relative">
+            
+            <div class="flex items-center space-x-2">
+                <!-- ÍCONE PROFISSIONAL CORRIGIDO: Cifrão em Círculo -->
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 10v-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span class="text-base font-semibold text-white whitespace-nowrap">
+                    Apoie o Monitoramento via PIX:
+                </span>
+            </div>
+            
+            <div class="flex items-center space-x-2 mt-2 sm:mt-0">
+                <!-- Chave PIX -->
+                <span id="pix-key-display" class="text-sm sm:text-base font-mono text-emerald-800 bg-emerald-100 px-3 py-1.5 rounded-md border border-emerald-300 select-all cursor-text shadow-inner">
+                    87988593247
+                </span>
+                
+                <!-- Botão Copiar -->
+                <button 
+                    id="copy-button"
+                    class="pix-gradient text-white text-sm font-medium py-1.5 px-4 rounded-lg shadow-lg hover:opacity-90 transition duration-150 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-75 flex items-center pix-pulse-effect border-2 border-emerald-300"
+                    onclick="copyPixKey()">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3"></path></svg>
+                    Copiar
+                </button>
+            </div>
+            
+            <!-- Mensagem de Confirmação -->
+            <div id="confirmation-message" class="absolute left-1/2 -bottom-2 transform -translate-x-1/2 translate-y-full mt-1 bg-green-600 text-white text-xs px-3 py-1 rounded-full opacity-0 transition-opacity duration-300 pointer-events-none shadow-lg">
+                Chave PIX copiada!
+            </div>
+            
+        </div>
+    </div>
+    
+    <!-- Cabeçalho Principal -->
+    <header class="mb-8 p-4 bg-white rounded-xl shadow-lg">
+        
+        <p class="text-xs text-gray-400 text-right mb-4 border-b pb-2">
+            Desenvolvido por <span class="text-emerald-600 font-semibold">Matheus Carlos</span>
+        </p>
+
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+            
+            <h1 class="text-3xl font-bold text-gray-800 text-center w-full mb-4 md:mb-0">
+                Monitoramento de Perícias
+            </h1>
+            <button onclick="openProcessModal()" class="btn-primary flex items-center text-sm md:text-base">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                Novo Processo
+            </button>
+        </div>
+
+        <!-- Card de Perfil/Credenciais -->
+        <div id="profileCard" class="flex items-center p-4 bg-gray-50 rounded-lg border border-gray-200 transition duration-300 hover:shadow-md cursor-pointer" onclick="openCredentialsModal()">
+            
+            <img src="https://placehold.co/64x64/10B981/ffffff?text=P" alt="Ícone de Perfil" class="w-16 h-16 rounded-full profile-icon border-4 border-emerald-500 mr-4">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900">Carregando Perfil...</h2>
+                <p class="text-sm text-gray-500">Aguarde</p>
+            </div>
+            <button onclick="openCredentialsModal(event)" class="text-blue-500 hover:text-blue-700 transition ml-auto text-sm">
+                Editar Credenciais
+            </button>
+        </div>
+    </header>
+
+    <!-- Filtros de Processos -->
+    <section class="mb-8 p-4 bg-white rounded-xl shadow-lg grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+            <label for="filterType" class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+            <select id="filterType" class="w-full">
+                <option value="">Todos os Tipos</option>
+                <option value="Financeira">Financeira</option>
+                <option value="Trabalhista">Trabalhista</option>
+            </select>
+        </div>
+        <div>
+            <label for="filterStatus" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select id="filterStatus" class="w-full">
+                <option value="">Todos os Status</option>
+                <option value="Aberto">Aberto</option>
+                <option value="Prazo Final">Prazo Final</option>
+                <option value="Concluído">Concluído</option>
+            </select>
+        </div>
+        <div class="md:col-span-2">
+            <label for="searchQuery" class="block text-sm font-medium text-gray-700 mb-1">Buscar (Nº Processo, Cliente)</label>
+            <input type="text" id="searchQuery" placeholder="Digite para buscar..." class="w-full">
+        </div>
+    </section>
+
+    <!-- Lista de Processos -->
+    <main class="grid grid-cols-1 gap-6" id="processListContainer">
+        
+        <p id="noProcessesMessage" class="text-center text-gray-500 hidden p-8 bg-white rounded-xl card">Nenhum processo encontrado. Adicione um novo para começar.</p>
+    </main>
+
+    <!-- Modal de Adição/Edição de Processo -->
+    <div id="processModal" class="fixed inset-0 z-50 modal-bg hidden justify-center items-center p-4">
+        
+        <div class="bg-white rounded-xl w-full max-w-2xl card overflow-hidden">
+            <div class="p-6">
+                <h2 id="modalTitle" class="text-2xl font-bold text-gray-800 mb-4">Adicionar Novo Processo</h2>
+                <form id="processForm">
+                    <input type="hidden" id="processId">
+
+                    <div class="mb-4">
+                        <label for="inputProcessNumber" class="block text-sm font-medium text-gray-700 mb-1">Número do Processo (Ex: 12345-67.2024.8.26.0000)</label>
+                        <input type="text" id="inputProcessNumber" required class="w-full">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="inputType" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Perícia</label>
+                            <select id="inputType" required class="w-full">
+                                <option value="Financeira">Financeira</option>
+                                <option value="Trabalhista">Trabalhista</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="inputDeadline" class="block text-sm font-medium text-gray-700 mb-1">Prazo Final (Data)</label>
+                            <input type="date" id="inputDeadline" required class="w-full">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="inputClientName" class="block text-sm font-medium text-gray-700 mb-1">Nome do Cliente/Parte</label>
+                        <input type="text" id="inputClientName" required class="w-full">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="inputJudicialDistrict" class="block text-sm font-medium text-gray-700 mb-1">Comarca/Vara</label>
+                        <input type="text" id="inputJudicialDistrict" required class="w-full">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="inputDescription" class="block text-sm font-medium text-gray-700 mb-1">Descrição Breve do Caso</label>
+                        <textarea id="inputDescription" rows="3" class="w-full"></textarea>
+                    </div>
+
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeProcessModal()" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            Salvar Processo
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Credenciais do Perito -->
+    <div id="credentialsModal" class="fixed inset-0 z-50 modal-bg hidden justify-center items-center p-4">
+        
+        <div class="bg-white rounded-xl w-full max-w-xl card overflow-hidden">
+            <div class="p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Minhas Credenciais</h2>
+                <form id="credentialsForm">
+                    <div class="mb-4">
+                        <label for="inputFullName" class="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
+                        <input type="text" id="inputFullName" required class="w-full" placeholder="Ex: Perito João da Silva">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="inputRegistration" class="block text-sm font-medium text-gray-700 mb-1">Nº de Registro (CRA/CRC)</label>
+                        <input type="text" id="inputRegistration" required class="w-full" placeholder="Ex: CRC 123456/O-1">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="inputProfileImageFile" class="block text-sm font-medium text-gray-700 mb-1">Imagem de Perfil (Arquivo Local)</label>
+                        <input type="file" id="inputProfileImageFile" accept="image/*" class="w-full p-2 border border-gray-300 rounded-lg bg-gray-50">
+                        <p class="text-xs text-gray-500 mt-1">Selecione uma imagem local. (Máximo 1MB)</p>
+                    </div>
+
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeCredentialsModal()" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            Salvar Credenciais
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensagem de Feedback (Substituto para alert) -->
+    <div id="feedbackMessage" class="fixed bottom-4 right-4 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 opacity-0 hidden z-50" style="min-width: 250px;"></div>
+
+    <script>
+        // Variáveis globais para armazenar os dados e elementos DOM
+        let processes = [];
+        let userCredentials = {};
+        const STORAGE_KEY = 'periciaTrackerProcesses';
+        const CREDENTIALS_KEY = 'periciaTrackerCredentials';
+
+        // Variáveis globais para as referências DOM, inicializadas em window.onload
+        let processListContainer = null;
+        let noProcessesMessage = null;
+        let filterTypeEl = null;
+        let filterStatusEl = null;
+        let searchQueryEl = null;
+
+        // --- Utilitários de Data ---
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const [year, month, day] = dateString.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
+        function getDaysUntil(dateString) {
+            const date = new Date(dateString);
+            date.setHours(0, 0, 0, 0); // Garante que a comparação seja apenas por data
+            const diffTime = date.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays;
+        }
+
+        // --- Gestão de Dados (localStorage) ---
+
+        function loadProcesses() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            processes = data ? JSON.parse(data) : [];
+            // Garante que os IDs sejam tratados como números
+            processes.forEach(p => p.id = Number(p.id));
+        }
+
+        function saveProcesses() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(processes));
+        }
+
+        // --- Gestão de Credenciais ---
+
+        function loadCredentials() {
+            const data = localStorage.getItem(CREDENTIALS_KEY);
+            // iconUrl pode ser uma URL externa ou uma string Base64
+            userCredentials = data ? JSON.parse(data) : {
+                fullName: 'Nome do Perito(a)',
+                iconUrl: 'https://placehold.co/64x64/10B981/ffffff?text=P',
+                registration: 'CRA/CRC 000000'
+            };
+        }
+
+        function saveCredentials() {
+            localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(userCredentials));
+        }
+
+        function renderCredentials() {
+            const profileCard = document.getElementById('profileCard');
+            if (!profileCard) return;
+
+            const icon = userCredentials.iconUrl || 'https://placehold.co/64x64/10B981/ffffff?text=P';
+            
+            profileCard.innerHTML = `
+                <img src="${icon}" onerror="this.onerror=null;this.src='https://placehold.co/64x64/10B981/ffffff?text=P'" 
+                     alt="Ícone de Perfil" class="w-16 h-16 rounded-full profile-icon border-4 border-emerald-500 mr-4">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900">${userCredentials.fullName}</h2>
+                    <p class="text-sm text-gray-500">${userCredentials.registration}</p>
+                </div>
+                <button onclick="openCredentialsModal(event)" class="text-blue-500 hover:text-blue-700 transition ml-auto text-sm">
+                    Editar Credenciais
+                </button>
+            `;
+        }
+
+        function openCredentialsModal(event) {
+            if (event) {
+                event.stopPropagation();
+            }
+
+            const modal = document.getElementById('credentialsModal');
+            document.getElementById('inputFullName').value = userCredentials.fullName;
+            document.getElementById('inputRegistration').value = userCredentials.registration;
+            const fileInput = document.getElementById('inputProfileImageFile');
+            if (fileInput) fileInput.value = ''; 
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeCredentialsModal() {
+            const modal = document.getElementById('credentialsModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // Função para ler o arquivo e salvar as credenciais de forma assíncrona (com Base64)
+        function readAndSaveProfileImage(file, fullName, registration) {
+            // Limite de 1MB para armazenamento no localStorage
+            const MAX_SIZE = 1048576; 
+            
+            if (file && file.size > MAX_SIZE) {
+                showFeedback('A imagem é muito grande. Tamanho máximo permitido: 1MB.', 'bg-red-500');
+                return;
+            }
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Image = e.target.result;
+                    // Salva credenciais com a nova Base64
+                    userCredentials = { fullName, registration, iconUrl: base64Image };
+                    saveCredentials();
+                    renderCredentials();
+                    closeCredentialsModal();
+                    showFeedback('Credenciais e imagem salvas com sucesso!', 'bg-emerald-500');
+                };
+                reader.onerror = function() {
+                    showFeedback('Erro ao ler o arquivo de imagem.', 'bg-red-500');
+                };
+                reader.readAsDataURL(file); // Lê o arquivo como Base64
+            } else {
+                // Se nenhum arquivo novo foi selecionado, mantém o valor existente ou o placeholder padrão
+                const currentIcon = userCredentials.iconUrl || 'https://placehold.co/64x64/10B981/ffffff?text=P';
+
+                userCredentials = { 
+                    fullName, 
+                    registration, 
+                    iconUrl: currentIcon
+                };
+                saveCredentials();
+                renderCredentials();
+                closeCredentialsModal();
+                showFeedback('Credenciais salvas com sucesso!', 'bg-emerald-500');
+            }
+        }
+
+        document.getElementById('credentialsForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const fullName = document.getElementById('inputFullName').value.trim();
+            const registration = document.getElementById('inputRegistration').value.trim();
+            const imageFile = document.getElementById('inputProfileImageFile').files[0];
+
+            readAndSaveProfileImage(imageFile, fullName, registration);
+        });
+
+        // --- Funções do Modal e Formulário de Processos ---
+
+        function openProcessModal(processId = null) {
+            const modal = document.getElementById('processModal');
+            const form = document.getElementById('processForm');
+            const modalTitle = document.getElementById('modalTitle');
+            
+            form.reset(); // Limpa o formulário
+
+            if (processId !== null) {
+                const process = processes.find(p => p.id === processId);
+                if (process) {
+                    modalTitle.textContent = 'Editar Processo';
+                    document.getElementById('processId').value = process.id;
+                    document.getElementById('inputProcessNumber').value = process.processNumber || '';
+                    document.getElementById('inputType').value = process.type || 'Financeira';
+                    document.getElementById('inputDeadline').value = process.deadline || '';
+                    document.getElementById('inputClientName').value = process.clientName || '';
+                    document.getElementById('inputJudicialDistrict').value = process.judicialDistrict || '';
+                    document.getElementById('inputDescription').value = process.description || '';
+                }
+            } else {
+                modalTitle.textContent = 'Adicionar Novo Processo';
+                document.getElementById('processId').value = '';
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeProcessModal() {
+            const modal = document.getElementById('processModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.getElementById('processForm').reset();
+        }
+
+        document.getElementById('processForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const id = document.getElementById('processId').value;
+            const processNumber = document.getElementById('inputProcessNumber').value.trim();
+            const type = document.getElementById('inputType').value;
+            const deadline = document.getElementById('inputDeadline').value;
+            const clientName = document.getElementById('inputClientName').value.trim();
+            const judicialDistrict = document.getElementById('inputJudicialDistrict').value.trim();
+            const description = document.getElementById('inputDescription').value.trim();
+            
+            const newProcess = {
+                processNumber,
+                type,
+                deadline,
+                clientName,
+                judicialDistrict,
+                description,
+                lastUpdate: new Date().toISOString().split('T')[0] // Data atual de atualização
+            };
+
+            if (id) {
+                // Edição
+                const index = processes.findIndex(p => p.id === Number(id));
+                if (index !== -1) {
+                    // Mantém o status e ID original
+                    processes[index] = { ...processes[index], ...newProcess };
+                    showFeedback('Processo atualizado com sucesso!', 'bg-blue-500');
+                }
+            } else {
+                // Novo Processo
+                newProcess.id = Date.now(); // ID único simples
+                newProcess.status = 'Aberto'; // Status inicial
+                processes.push(newProcess);
+                showFeedback('Novo processo adicionado!', 'bg-emerald-500');
+            }
+
+            saveProcesses();
+            renderProcesses();
+            closeProcessModal();
+        });
+
+        // --- Funções de Ação (Status/Delete) ---
+
+        function updateProcessStatus(id, newStatus) {
+            const process = processes.find(p => p.id === id);
+            if (process) {
+                process.status = newStatus;
+                process.lastUpdate = new Date().toISOString().split('T')[0];
+                saveProcesses();
+                renderProcesses();
+                showFeedback(`Status do processo ${process.processNumber} alterado para "${newStatus}".`, 'bg-blue-500');
+            }
+        }
+
+        function deleteProcess(id) {
+            processes = processes.filter(p => p.id !== id);
+            saveProcesses();
+            renderProcesses();
+            showFeedback('Processo excluído com sucesso.', 'bg-red-500');
+            
+        }
+
+        // --- Renderização e Filtros ---
+
+        function getProcessStatus(process) {
+            // Se já estiver concluído, mantém o status
+            if (process.status === 'Concluído') {
+                return { status: 'Concluído', class: 'status-concluido' };
+            }
+
+            const daysLeft = getDaysUntil(process.deadline);
+            
+            if (daysLeft < 0) {
+                // Prazo já expirou
+                return { status: 'Prazo Final (Expirado)', class: 'status-prazo-final deadline-due' };
+            } else if (daysLeft <= 7) {
+                // Prazo nos próximos 7 dias (incluindo hoje e amanhã)
+                return { status: 'Prazo Final', class: 'status-prazo-final deadline-due' };
+            } else {
+                // Aberto e com prazo ok
+                return { status: 'Aberto', class: 'status-aberto' };
+            }
+        }
+        
+        function renderProcesses() {
+            if (!processListContainer || !noProcessesMessage) {
+                console.error("Erro: Elementos DOM essenciais não foram encontrados.");
+                return;
+            }
+
+            const filterType = filterTypeEl ? filterTypeEl.value.toLowerCase() : '';
+            const filterStatus = filterStatusEl ? filterStatusEl.value : '';
+            const searchQuery = searchQueryEl ? searchQueryEl.value.toLowerCase() : '';
+
+            // 1. Processar e Filtrar
+            const filteredProcesses = processes.map(process => {
+                // Atualiza o status dinamicamente
+                const statusInfo = getProcessStatus(process);
+                process.status = statusInfo.status.split(' (')[0]; // Remove o '(Expirado)' para o filtro
+                process.statusClass = statusInfo.class;
+                process.daysLeft = getDaysUntil(process.deadline);
+                return process;
+            }).filter(process => {
+                const matchesType = !filterType || process.type.toLowerCase() === filterType;
+                // O filtro de status deve considerar o status "real" que vem da função getProcessStatus
+                const actualStatus = getProcessStatus(process).status.split(' (')[0];
+                const matchesStatus = !filterStatus || actualStatus === filterStatus;
+
+                const matchesSearch = !searchQuery || 
+                                      process.processNumber.toLowerCase().includes(searchQuery) ||
+                                      process.clientName.toLowerCase().includes(searchQuery) ||
+                                      process.description.toLowerCase().includes(searchQuery);
+                return matchesType && matchesStatus && matchesSearch;
+            });
+
+            // 2. Ordenar: Prazos mais urgentes (menor diasLeft, incluindo negativos/expirados) primeiro.
+            filteredProcesses.sort((a, b) => {
+                // 1º: Mover Concluídos para o final
+                if (a.status === 'Concluído' && b.status !== 'Concluído') return 1;
+                if (a.status !== 'Concluído' && b.status === 'Concluído') return -1;
+                
+                // 2º: Ordenar os demais (Aberto/Prazo Final) por dias restantes (do menor para o maior)
+                return a.daysLeft - b.daysLeft;
+            });
+
+            processListContainer.innerHTML = '';
+            noProcessesMessage.classList.add('hidden');
+
+            if (filteredProcesses.length === 0) {
+                noProcessesMessage.classList.remove('hidden');
+                return;
+            }
+
+            // 3. Renderizar
+            filteredProcesses.forEach(process => {
+                const isUrgent = process.statusClass.includes('deadline-due');
+                
+                const cardClasses = isUrgent
+                    ? 'border-2 border-red-500 deadline-due' // ADICIONADO: Classe de pulso ao card
+                    : 'border border-gray-100';
+
+                // LÓGICA ATUALIZADA: Uso de Prazo AMANHÃ!
+                let daysText;
+                if (process.daysLeft < 0) {
+                    const daysAgo = Math.abs(process.daysLeft);
+                    daysText = `Expirou há ${daysAgo} dia${daysAgo === 1 ? '' : 's'}`;
+                } else if (process.daysLeft === 0) {
+                    daysText = `Prazo HOJE! (Último dia)`;
+                } else if (process.daysLeft === 1) {
+                    daysText = `Prazo AMANHÃ! (1 dia restante)`; 
+                } else {
+                    daysText = `${process.daysLeft} dias restantes`;
+                }
+                
+                const daysColor = isUrgent ? 'text-red-600 font-bold' : 'text-gray-600';
+                
+                const deadlineBoxClasses = isUrgent
+                    ? 'bg-red-50 border-red-300'
+                    : 'bg-gray-50 border-gray-200';
+
+                const iconColor = isUrgent ? 'text-red-600' : 'text-emerald-600';
+
+
+                const processCard = `
+                    <div class="bg-white p-6 rounded-xl card transition duration-300 hover:shadow-xl ${cardClasses}">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                            <div class="mb-2 sm:mb-0">
+                                <span class="status-badge ${process.statusClass}">${process.status.replace(' (Expirado)', '')}</span>
+                                <span class="ml-3 text-sm font-semibold text-blue-600 bg-blue-100 px-3 py-1 rounded-full">${process.type}</span>
+                            </div>
+                            <div class="flex items-center text-sm text-gray-500">
+                                <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h.01M13 11h.01M17 11h.01M6 15h.01M10 15h.01M14 15h.01M18 15h.01M6 19h.01M10 19h.01M14 19h.01M18 19h.01M4 20h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                Última Atualização: ${formatDate(process.lastUpdate)}
+                            </div>
+                        </div>
+
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">${process.processNumber}</h3>
+                        <p class="text-sm text-gray-700 mb-4">
+                            <strong>Cliente:</strong> ${process.clientName} | 
+                            <strong>Comarca:</strong> ${process.judicialDistrict}
+                        </p>
+
+                        <!-- Box de Prazo -->
+                        <div class="flex items-center mb-4 p-3 rounded-lg border ${deadlineBoxClasses}">
+                            <svg class="w-6 h-6 mr-2 ${iconColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div>
+                                <p class="text-xs font-semibold text-gray-500 uppercase">Prazo de Entrega</p>
+                                <p class="text-lg font-bold ${daysColor}">${formatDate(process.deadline)}</p>
+                                <p class="text-sm ${daysColor}">${daysText}</p>
+                            </div>
+                        </div>
+
+                        <p class="text-gray-600 mb-6">${process.description || 'Nenhuma descrição fornecida.'}</p>
+
+                        <!-- Ações -->
+                        <div class="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+                            <button onclick="openProcessModal(${process.id})" class="text-blue-600 hover:text-blue-800 text-sm font-medium transition flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-7l1.414 1.414M16 4l-1.414 1.414m-1.414 1.414l-4.243 4.243m-4.243 4.243l1.414 1.414m-1.414-1.414l4.243-4.243m4.243-4.243l-1.414-1.414m1.414 1.414l-4.243 4.243m-4.243-4.243l-1.414 1.414m-1.414 1.414l-4.243 4.243"></path></svg>
+                                Editar
+                            </button>
+                            ${process.status !== 'Concluído' ? 
+                                `<button onclick="updateProcessStatus(${process.id}, 'Concluído')" class="text-emerald-600 hover:text-emerald-800 text-sm font-medium transition flex items-center ml-4">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    Concluir
+                                </button>` : ''
+                            }
+                            <button onclick="deleteProcess(${process.id})" class="text-red-600 hover:text-red-800 text-sm font-medium transition flex items-center ml-4">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                Excluir
+                            </button>
+                        </div>
+                    </div>
+                `;
+                processListContainer.innerHTML += processCard;
+            });
+        }
+        
+        // --- Funções de Cópia PIX ---
+
+        /**
+         * Função para copiar a chave PIX para a área de transferência.
+         * Usa o método document.execCommand('copy') como fallback seguro 
+         * para ambientes de iframe.
+         */
+        function copyPixKey() {
+            const pixKeyElement = document.getElementById('pix-key-display');
+            const pixKey = pixKeyElement.textContent.trim();
+            
+            // Cria um campo de texto temporário
+            const tempInput = document.createElement('textarea');
+            tempInput.value = pixKey;
+            document.body.appendChild(tempInput);
+            
+            // Seleciona o texto
+            tempInput.select();
+            tempInput.setSelectionRange(0, 99999); // Para mobile
+            
+            let success = false;
+            try {
+                // Tenta copiar
+                success = document.execCommand('copy');
+            } catch (err) {
+                console.error('Falha ao tentar copiar a chave PIX:', err);
+            }
+            
+            // Remove o campo temporário
+            document.body.removeChild(tempInput);
+
+            if (success) {
+                // Exibe a mensagem de confirmação
+                showPixConfirmation();
+            } else {
+                console.error('Não foi possível copiar automaticamente.');
+                showFeedback('Erro: Não foi possível copiar a chave PIX.', 'bg-red-500');
+            }
+        }
+
+        /**
+         * Exibe a mensagem de confirmação de cópia do PIX e remove o pulso.
+         */
+        function showPixConfirmation() {
+            const messageElement = document.getElementById('confirmation-message');
+            const button = document.getElementById('copy-button');
+            
+            // Torna a mensagem visível
+            messageElement.classList.remove('opacity-0');
+            messageElement.classList.add('opacity-100');
+            
+            // Remove o efeito pulsante da caixa principal temporariamente para indicar sucesso
+            button.classList.remove('pix-pulse-effect');
+            button.textContent = 'Copiado!';
+
+            // Timeout para esconder a mensagem e restaurar o pulso e texto do botão
+            setTimeout(() => {
+                messageElement.classList.remove('opacity-100');
+                messageElement.classList.add('opacity-0');
+            }, 1500); 
+
+            setTimeout(() => {
+                button.classList.add('pix-pulse-effect');
+                button.innerHTML = '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3"></path></svg>Copiar';
+            }, 2000); 
+        }
+
+        // --- Sistema de Feedback (Substituto para alert()) ---
+        function showFeedback(message, bgColor) {
+            const feedbackEl = document.getElementById('feedbackMessage');
+            feedbackEl.textContent = message;
+            feedbackEl.className = `fixed bottom-4 right-4 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 z-50 ${bgColor}`;
+            feedbackEl.classList.remove('opacity-0', 'hidden');
+            feedbackEl.classList.add('opacity-100');
+
+            setTimeout(() => {
+                feedbackEl.classList.remove('opacity-100');
+                feedbackEl.classList.add('opacity-0');
+                setTimeout(() => feedbackEl.classList.add('hidden'), 300);
+            }, 3000);
+        }
+
+        // --- Inicialização ---
+
+        // Dados de exemplo para iniciar o sistema
+        function seedData() {
+            if (processes.length === 0) {
+                // O `tomorrow` é baseado na data atual do sistema onde o código roda
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1); // Exemplo urgente: 1 dia (Prazo: Amanhã)
+                
+                const todayDeadline = new Date(); // Exemplo urgente: 0 dias (Prazo: Hoje)
+                
+                const inTenDays = new Date();
+                inTenDays.setDate(inTenDays.getDate() + 10); // Exemplo normal: 10 dias
+
+                processes = [
+                    { id: 1698115200001, processNumber: '0012345-67.2024.5.01.0000', type: 'Trabalhista', clientName: 'Empresa ABC S.A.', judicialDistrict: 'RJ - 1ª VT', deadline: tomorrow.toISOString().split('T')[0], description: 'Cálculo de horas extras, adicionais noturnos e insalubridade. Prioridade Máxima (Prazo Amanhã).', lastUpdate: new Date().toISOString().split('T')[0], status: 'Aberto' },
+                    { id: 1698115200004, processNumber: '9998888-12.2024.8.26.0000', type: 'Financeira', clientName: 'Indivíduo Teste', judicialDistrict: 'SP - 12ª Cível', deadline: todayDeadline.toISOString().split('T')[0], description: 'Análise de empréstimo (Prazo Hoje).', lastUpdate: new Date().toISOString().split('T')[0], status: 'Aberto' },
+                    { id: 1698115200002, processNumber: '1098765-43.2024.8.26.0000', type: 'Financeira', clientName: 'João da Silva', judicialDistrict: 'SP - 5ª Vara Cível', deadline: inTenDays.toISOString().split('T')[0], description: 'Revisão de contrato bancário com análise de juros capitalizados.', lastUpdate: new Date().toISOString().split('T')[0], status: 'Aberto' },
+                    // DATA CORRIGIDA: Atualização do processo concluído ajustada para a data atual para realismo
+                    { id: 1698115200003, processNumber: '5555555-10.2023.5.02.0000', type: 'Trabalhista', clientName: 'Maria de Souza', judicialDistrict: 'MG - 3ª VT', deadline: '2024-05-15', description: 'Perícia concluída e protocolada. Aguardando homologação judicial.', lastUpdate: new Date().toISOString().split('T')[0], status: 'Concluído' }
+                ];
+                saveProcesses();
+            }
+        }
+
+        window.onload = function() {
+            // 1. Inicializa as referências DOM globais
+            processListContainer = document.getElementById('processListContainer');
+            noProcessesMessage = document.getElementById('noProcessesMessage');
+            filterTypeEl = document.getElementById('filterType');
+            filterStatusEl = document.getElementById('filterStatus');
+            searchQueryEl = document.getElementById('searchQuery');
+            
+            // 2. Carrega Dados (Credenciais e Processos)
+            loadCredentials();
+            loadProcesses();
+            seedData(); // Carrega dados de exemplo se o localStorage estiver vazio
+            
+            // 3. Renderiza a interface
+            renderCredentials(); 
+            
+            // 4. Adiciona os Event Listeners (usando as referências globais)
+            filterTypeEl?.addEventListener('change', renderProcesses);
+            filterStatusEl?.addEventListener('change', renderProcesses);
+            searchQueryEl?.addEventListener('keyup', renderProcesses);
+
+            // 5. Renderização Inicial dos processos
+            if (processListContainer && noProcessesMessage) {
+                renderProcesses();
+            } else {
+                console.error("Erro fatal: Não foi possível encontrar os containers principais do DOM na inicialização.");
+            }
+        }
+    </script>
+</body>
+</html>
