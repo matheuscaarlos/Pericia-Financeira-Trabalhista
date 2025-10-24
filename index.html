@@ -350,9 +350,9 @@
                         class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
 
-                <!-- Registro (CRC/CREA, etc.) -->
+                <!-- Registro (CRC/CRA/Outro) -->
                 <div>
-                    <label for="editCredentialRegistry" class="block text-sm font-medium text-gray-700">Registro (CRC/CREA/Outro)</label>
+                    <label for="editCredentialRegistry" class="block text-sm font-medium text-gray-700">Registro (CRC/CRA/Outro)</label>
                     <input type="text" id="editCredentialRegistry" required
                         class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
@@ -380,8 +380,10 @@
                 Apoie o desenvolvimento deste projeto via PIX. Sua contribuição é muito importante!
             </p>
             <div class="flex items-center space-x-2">
-                <!-- Botão Pulsante para Copiar Chave -->
-                <button id="copyPixKey" class="bg-amber-500 hover:bg-amber-600 text-indigo-900 font-extrabold py-2 px-4 rounded-full pulsing-pix transition duration-150 active:scale-95 text-xs sm:text-sm shadow-lg focus:outline-none focus:ring-4 focus:ring-amber-300">
+                <!-- Botão Pulsante para Copiar Chave - CLICAR COPIA A CHAVE -->
+                <button id="copyPixKey" onclick="copyPixKey()" 
+                        class="bg-amber-500 hover:bg-amber-600 text-indigo-900 font-extrabold py-2 px-4 rounded-full pulsing-pix transition duration-150 active:scale-95 text-xs sm:text-sm shadow-lg focus:outline-none focus:ring-4 focus:ring-amber-300"
+                        title="Clique para copiar a chave PIX">
                     <i class="fas fa-qrcode mr-2"></i> Chave PIX: matheuscaarlos09@gmail.com
                 </button>
                 <!-- Mensagem de Confirmação (será exibida via JS) -->
@@ -391,22 +393,17 @@
     </div>
 
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <script>
+        // Chaves para o localStorage
+        const PROCESSES_STORAGE_KEY = 'pericias_processes_v1';
+        const CREDENTIALS_STORAGE_KEY = 'pericias_credentials_v1';
+        const PIX_KEY = "matheuscaarlos09@gmail.com"; // Chave PIX centralizada
 
-        // Variáveis globais de ambiente (MANDATÓRIAS)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null; 
-
-        let app, db, auth;
-        let userId = null;
+        // Variáveis de estado global (substituem o Firebase)
         let processes = [];
         let credentials = {};
         
-        // Referências DOM - Declaradas aqui para acesso global dentro do módulo
+        // Referências DOM - Declaradas aqui para acesso global
         let processListContainer, noProcessesMessage, credentialsDisplay, filterTypeEl, filterStatusEl, searchQueryEl;
         
         // CAMPOS DO FORMULÁRIO DE CADASTRO
@@ -422,9 +419,65 @@
 
 
         // ------------------
-        // FUNÇÕES DE UTILIDADE
+        // FUNÇÕES DE UTILIDADE (LOCAL STORAGE)
         // ------------------
         
+        /**
+         * Carrega a lista de processos do localStorage.
+         */
+        function getProcessesFromLocalStorage() {
+            try {
+                const stored = localStorage.getItem(PROCESSES_STORAGE_KEY);
+                return stored ? JSON.parse(stored) : [];
+            } catch (e) {
+                console.error("Erro ao carregar processos do localStorage:", e);
+                return [];
+            }
+        }
+
+        /**
+         * Salva a lista de processos no localStorage.
+         * @param {Array<Object>} data - Array de processos.
+         */
+        function saveProcessesToLocalStorage(data) {
+            try {
+                localStorage.setItem(PROCESSES_STORAGE_KEY, JSON.stringify(data));
+            } catch (e) {
+                console.error("Erro ao salvar processos no localStorage:", e);
+            }
+        }
+
+        /**
+         * Carrega as credenciais do localStorage.
+         */
+        function getCredentialsFromLocalStorage() {
+            try {
+                const stored = localStorage.getItem(CREDENTIALS_STORAGE_KEY);
+                // ATUALIZADO: Default ajustado para CRA
+                return stored ? JSON.parse(stored) : {
+                    nome: "Perito(a) Designado(a)",
+                    registro: "CRC/CRA 123456", 
+                    dataAtualizacao: new Date().toLocaleDateString('pt-BR')
+                };
+            } catch (e) {
+                console.error("Erro ao carregar credenciais do localStorage:", e);
+                return {};
+            }
+        }
+
+        /**
+         * Salva as credenciais no localStorage.
+         * @param {Object} data - Objeto de credenciais.
+         */
+        function saveCredentialsToLocalStorage(data) {
+            try {
+                localStorage.setItem(CREDENTIALS_STORAGE_KEY, JSON.stringify(data));
+            } catch (e) {
+                console.error("Erro ao salvar credenciais no localStorage:", e);
+            }
+        }
+
+
         /**
          * Formata o número do processo CNJ (Ex: 0001234-56.2023.8.26.0001) para um ID de documento.
          * Remove caracteres não alfanuméricos.
@@ -433,20 +486,6 @@
          */
         function formatProcessToId(cnjNumber) {
             return cnjNumber.replace(/[^a-zA-Z0-9]/g, '');
-        }
-
-        /**
-         * Gera o caminho da coleção de processos (privada).
-         */
-        function getProcessCollectionPath(uid) {
-            return `/artifacts/${appId}/users/${uid}/processes`;
-        }
-
-        /**
-         * Gera o caminho da COLEÇÃO onde o documento de credenciais será armazenado (privada).
-         */
-        function getCredentialsCollectionPath(uid) {
-            return `/artifacts/${appId}/users/${uid}/metadata`;
         }
 
         /**
@@ -480,16 +519,16 @@
 
 
         // ------------------
-        // FUNÇÃO PIX
+        // FUNÇÃO PIX (AGORA COM COPIA PARA ÁREA DE TRANSFERÊNCIA)
         // ------------------
 
         /**
          * Copia a chave PIX para a área de transferência e mostra uma mensagem de sucesso.
          */
-        window.copyPixKey = function() { // Exposto globalmente
-            const key = "matheuscaarlos09@gmail.com";
+        window.copyPixKey = function() {
+            const key = PIX_KEY; // Usa a constante PIX_KEY
             
-            // Cria um elemento temporário para copiar o texto
+            // 1. Cria um elemento temporário para copiar o texto
             const tempInput = document.createElement('input');
             tempInput.value = key;
             document.body.appendChild(tempInput);
@@ -497,24 +536,33 @@
             
             const copyMessageEl = document.getElementById('copyMessage');
             const buttonEl = document.getElementById('copyPixKey');
+            const originalButtonText = '<i class="fas fa-qrcode mr-2"></i> Chave PIX: matheuscaarlos09@gmail.com';
 
             try {
-                // Comando de cópia que funciona em iFrames
+                // 2. Tenta copiar (document.execCommand('copy') é o fallback mais seguro em iframes)
                 const successful = document.execCommand('copy');
 
                 if (successful) {
-                    // Mostrar mensagem de sucesso
+                    // 3. Feedback visual de sucesso
+                    buttonEl.classList.remove('pulsing-pix'); // Para o pulso durante a cópia
+                    buttonEl.classList.add('bg-emerald-500', 'hover:bg-emerald-500'); // Cor de sucesso
+                    buttonEl.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Copiado! (Clique p/ restaurar)'; // Texto de sucesso
+                    
+                    // Exibe a mensagem de sucesso
                     copyMessageEl.textContent = 'Chave Copiada! ✅';
                     copyMessageEl.classList.remove('hidden', 'text-red-300');
                     copyMessageEl.classList.add('block', 'text-green-300');
-                    buttonEl.innerHTML = '<i class="fas fa-qrcode mr-2"></i> Chave Copiada!';
-                    
-                    // Reverter após 3 segundos
+
+                    // 4. Restaura o estado após um tempo
                     setTimeout(() => {
                         copyMessageEl.classList.add('hidden');
-                        buttonEl.innerHTML = '<i class="fas fa-qrcode mr-2"></i> Chave PIX: matheuscaarlos09@gmail.com';
+                        buttonEl.classList.remove('bg-emerald-500', 'hover:bg-emerald-500');
+                        buttonEl.classList.add('bg-amber-500', 'hover:bg-amber-600', 'pulsing-pix');
+                        buttonEl.innerHTML = originalButtonText;
                     }, 3000);
+
                 } else {
+                    // Feedback de falha
                     console.error('Falha ao copiar.');
                     copyMessageEl.textContent = 'Falha ao copiar. Tente novamente.';
                     copyMessageEl.classList.remove('hidden', 'text-green-300');
@@ -526,6 +574,7 @@
             } catch (err) {
                 console.error('Erro ao usar execCommand:', err);
             } finally {
+                // 5. Remove o input temporário
                 document.body.removeChild(tempInput);
             }
         }
@@ -537,7 +586,7 @@
         /**
          * Fecha o modal de edição de processo.
          */
-        window.handleCloseModal = function() { // EXPOSTO GLOBALMENTE
+        window.handleCloseModal = function() {
             if (editProcessModal) {
                 editProcessModal.classList.add('hidden');
                 editProcessModal.classList.remove('flex');
@@ -548,7 +597,7 @@
          * Abre o modal de edição de processo e carrega os dados do processo.
          * @param {string} id - O ID formatado do processo.
          */
-        window.handleEditProcess = function(id) { // EXPOSTO GLOBALMENTE
+        window.handleEditProcess = function(id) {
             const process = processes.find(p => p.id === id);
             if (process) {
                 // Preenche campos do modal
@@ -576,12 +625,17 @@
         }
 
         /**
-         * Salva as alterações de um processo no Firestore.
+         * Salva as alterações de um processo no localStorage.
          */
-        window.handleUpdateProcess = async function(event) { // EXPOSTO GLOBALMENTE
-            if (!db || !userId) return;
-
+        window.handleUpdateProcess = function(event) {
             const id = editProcessIdEl.value;
+            const processIndex = processes.findIndex(p => p.id === id);
+            
+            if (processIndex === -1) {
+                console.error("Processo não encontrado para atualização local.");
+                return;
+            }
+
             const newStatus = editStatusEl.value;
             const newNomination = editDateNominationEl.value;
             const newDeadline = editDateDeadlineEl.value;
@@ -589,17 +643,17 @@
             const newAuthor = editAuthorEl.value.trim();      
             const newDefendant = editDefendantEl.value.trim(); 
 
-
             if (!id || !newStatus || !newAuthor || !newDefendant) {
                 console.error("ID, Status, Autor ou Réu faltando para a atualização.");
                 return;
             }
 
-            const updatedData = {
+            // Atualiza o objeto no array
+            processes[processIndex] = {
+                ...processes[processIndex],
                 // Partes do Processo
                 author: newAuthor,
                 defendant: newDefendant,
-
                 status: newStatus,
                 dataNomeacao: newNomination || null,
                 prazoEntrega: newDeadline || null,
@@ -607,16 +661,12 @@
                 ultimaAtualizacao: new Date().toISOString(),
             };
 
-            try {
-                const docRef = doc(db, getProcessCollectionPath(userId), id);
-                await updateDoc(docRef, updatedData);
-                
-                console.log(`Processo ${id} atualizado com sucesso!`);
-                handleCloseModal(); // Fecha o modal após o sucesso
-
-            } catch (e) {
-                console.error("Erro ao atualizar o documento: ", e);
-            }
+            // Salva no localStorage e renderiza novamente
+            saveProcessesToLocalStorage(processes);
+            renderProcesses();
+            
+            console.log(`Processo ${id} atualizado localmente com sucesso!`);
+            handleCloseModal(); // Feche o modal após o sucesso
         }
         
         // ------------------
@@ -626,7 +676,7 @@
         /**
          * Abre o modal de edição de credenciais e preenche os campos.
          */
-        window.handleOpenCredentialsModal = function() { // EXPOSTO GLOBALMENTE
+        window.handleOpenCredentialsModal = function() {
             if (!editCredentialsModal) return;
 
             // Preenche os campos com os dados atuais
@@ -641,7 +691,7 @@
         /**
          * Fecha o modal de edição de credenciais.
          */
-        window.handleCloseCredentialsModal = function() { // EXPOSTO GLOBALMENTE
+        window.handleCloseCredentialsModal = function() {
             if (editCredentialsModal) {
                 editCredentialsModal.classList.add('hidden');
                 editCredentialsModal.classList.remove('flex');
@@ -649,11 +699,9 @@
         }
 
         /**
-         * Salva as novas credenciais no Firestore.
+         * Salva as novas credenciais no localStorage.
          */
-        window.handleUpdateCredentials = async function(event) { // EXPOSTO GLOBALMENTE
-            if (!db || !userId) return;
-
+        window.handleUpdateCredentials = function(event) {
             const newName = editCredentialNameEl.value.trim();
             const newRegistry = editCredentialRegistryEl.value.trim();
 
@@ -662,56 +710,38 @@
                 return;
             }
 
-            const updatedCredentials = {
+            credentials = {
                 nome: newName,
                 registro: newRegistry,
                 dataAtualizacao: new Date().toLocaleDateString('pt-BR'),
             };
 
-            try {
-                const credDocRef = doc(db, getCredentialsCollectionPath(userId), 'user_data');
-                await setDoc(credDocRef, updatedCredentials, { merge: true }); // Usa setDoc com merge para criar/atualizar
+            saveCredentialsToLocalStorage(credentials);
+            renderCredentials();
 
-                console.log("Credenciais atualizadas com sucesso!");
-                handleCloseCredentialsModal();
-                // O listener de snapshot já se encarregará de atualizar a UI
-                
-            } catch (e) {
-                console.error("Erro ao atualizar credenciais: ", e);
-            }
+            console.log("Credenciais atualizadas localmente com sucesso!");
+            handleCloseCredentialsModal();
         }
 
 
         // ------------------
-        // FIREBASE E PROCESSOS
+        // CARREGAMENTO DE DADOS (LOCAL STORAGE)
         // ------------------
 
         /**
-         * Carrega as credenciais do usuário do Firestore (ou cria um doc inicial se não existir).
+         * Carrega as credenciais do usuário do localStorage.
          */
-        function loadCredentialsListener() {
-            if (!db || !userId) return;
-            
-            const credDocRef = doc(db, getCredentialsCollectionPath(userId), 'user_data'); 
-            
-            // Listener em tempo real para as credenciais
-            onSnapshot(credDocRef, async (docSnap) => {
-                if (docSnap.exists()) {
-                    credentials = docSnap.data();
-                } else {
-                    // Credenciais iniciais (mock/placeholder)
-                    credentials = {
-                        nome: "Perito(a) Designado(a)",
-                        registro: "CRC/CREA 123456",
-                        dataAtualizacao: new Date().toLocaleDateString('pt-BR')
-                    };
-                    // Salva o doc inicial
-                    await setDoc(credDocRef, credentials);
-                }
-                renderCredentials();
-            }, (error) => {
-                console.error("Erro ao carregar credenciais em tempo real:", error);
-            });
+        function loadCredentials() {
+            credentials = getCredentialsFromLocalStorage();
+            // Se as credenciais estiverem vazias, o getCredentialsFromLocalStorage já fornece um default.
+            if (Object.keys(credentials).length === 0) {
+                 credentials = {
+                    nome: "Perito(a) Designado(a)",
+                    registro: "CRC/CRA 123456", 
+                    dataAtualizacao: new Date().toLocaleDateString('pt-BR')
+                };
+                saveCredentialsToLocalStorage(credentials);
+            }
         }
 
         /**
@@ -725,10 +755,9 @@
                     <p class="text-lg font-semibold text-indigo-600">${credentials.nome || 'N/A'}</p>
                     <p class="text-gray-600">Registro: ${credentials.registro || 'N/A'}</p>
                     <p class="text-sm text-gray-500">Última atualização: ${credentials.dataAtualizacao || 'N/A'}</p>
-                    <p class="text-xs text-gray-400 mt-2">ID do Usuário: ${userId}</p>
                 `;
             } else {
-                credentialsDisplay.innerHTML = '<p class="text-gray-500">Nenhuma credencial encontrada. Faça login ou recarregue.</p>';
+                credentialsDisplay.innerHTML = '<p class="text-gray-500">Nenhuma credencial encontrada. Edite acima para salvar.</p>';
             }
         }
         
@@ -751,17 +780,19 @@
                 processIdEl.classList.remove('hidden');
             }
 
-            // 2. Erro de Duplicidade
+            // 2. Erro de Duplicidade ou Formato Inválido
             if (isDuplicate) {
+                duplicityErrorEl.textContent = 'Este número de processo já foi cadastrado.';
                 duplicityErrorEl.classList.remove('hidden');
                 processSubmitButtonEl.disabled = true;
                 processSubmitButtonEl.classList.remove('bg-[var(--primary-color)]', 'hover:bg-[var(--primary-color-dark)]');
                 processSubmitButtonEl.classList.add('bg-gray-400');
             } else if (!isValidFormat) {
-                 duplicityErrorEl.classList.add('hidden');
-                 processSubmitButtonEl.disabled = true;
-                 processSubmitButtonEl.classList.remove('bg-[var(--primary-color)]', 'hover:bg-[var(--primary-color-dark)]');
-                 processSubmitButtonEl.classList.add('bg-gray-400');
+                duplicityErrorEl.textContent = 'Número do processo muito curto.';
+                duplicityErrorEl.classList.remove('hidden');
+                processSubmitButtonEl.disabled = true;
+                processSubmitButtonEl.classList.remove('bg-[var(--primary-color)]', 'hover:bg-[var(--primary-color-dark)]');
+                processSubmitButtonEl.classList.add('bg-gray-400');
             } 
             else {
                 duplicityErrorEl.classList.add('hidden');
@@ -773,11 +804,9 @@
 
 
         /**
-         * Adiciona um novo processo ao Firestore.
+         * Adiciona um novo processo ao array e salva no localStorage.
          */
-        window.handleAddProcess = async function(event) { // EXPOSTO GLOBALMENTE
-            if (!db || !userId) return;
-            
+        window.handleAddProcess = function(event) {
             const cnjNumber = document.getElementById('inputProcessNumber').value.trim();
             const author = document.getElementById('inputAuthor').value.trim();       
             const defendant = document.getElementById('inputDefendant').value.trim(); 
@@ -788,12 +817,12 @@
             
             const processId = formatProcessToId(cnjNumber);
 
-            if (!cnjNumber || !processType || !author || !defendant) { // Validação de campos
+            if (!cnjNumber || !processType || !author || !defendant) {
                 console.error("Campos obrigatórios (Número, Tipo, Autor, Réu) faltando.");
                 return;
             }
 
-            // Garante que não é duplicado (já validado, mas checagem final)
+            // Garante que não é duplicado
             if (processes.some(p => p.id === processId)) {
                 console.warn("Processo já cadastrado.");
                 return;
@@ -818,19 +847,15 @@
                 observacoes: observations,
             };
 
-            try {
-                // Adiciona o documento com o ID personalizado (o próprio ID formatado)
-                const docRef = doc(db, getProcessCollectionPath(userId), processId);
-                await setDoc(docRef, newProcess);
-                
-                // Limpa o formulário
-                event.target.reset();
-                validateProcessNumber(); // Reseta o estado do botão/validação
-                console.log("Processo adicionado com sucesso!");
+            // Adiciona ao array e salva localmente
+            processes.push(newProcess);
+            saveProcessesToLocalStorage(processes);
+            renderProcesses(); // Renderiza para simular atualização em tempo real
 
-            } catch (e) {
-                console.error("Erro ao adicionar documento: ", e);
-            }
+            // Limpa o formulário
+            event.target.reset();
+            validateProcessNumber(); // Reseta o estado do botão/validação
+            console.log("Processo adicionado localmente com sucesso!");
         }
 
         /**
@@ -868,7 +893,11 @@
                 filteredProcesses = filteredProcesses.filter(p => p.status === filterStatus);
             }
             if (searchQuery) {
-                filteredProcesses = filteredProcesses.filter(p => p.cnjNumber.toLowerCase().includes(searchQuery));
+                filteredProcesses = filteredProcesses.filter(p => 
+                    p.cnjNumber.toLowerCase().includes(searchQuery) ||
+                    p.author.toLowerCase().includes(searchQuery) ||
+                    p.defendant.toLowerCase().includes(searchQuery)
+                );
             }
             
             // 2. Ordenação por Prazo (os mais próximos/atrasados no topo)
@@ -969,63 +998,28 @@
         }
         
         /**
-         * Inicia o listener de snapshot para a lista de processos.
+         * Carrega a lista de processos do localStorage para a memória.
          */
         function loadProcesses() {
-            if (!db || !userId) return;
-
-            const processesColRef = collection(db, getProcessCollectionPath(userId));
-            const q = query(processesColRef);
-
-            // Listener em tempo real
-            onSnapshot(q, (snapshot) => {
-                processes = [];
-                snapshot.forEach((doc) => {
-                    processes.push(doc.data());
-                });
-                renderProcesses();
-            }, (error) => {
-                console.error("Erro ao carregar processos em tempo real:", error);
-                // Pode exibir uma mensagem de erro na UI se necessário
-            });
+            processes = getProcessesFromLocalStorage();
+            renderProcesses();
         }
         
         /**
-         * Função placeholder para logout.
+         * Função placeholder para logout (simplesmente recarrega a página).
          */
-        window.handleLogout = function() { // Exposto ao objeto global window
-            console.log('Funcionalidade de Logout: Em um ambiente real, o Firebase Auth seria utilizado aqui.');
+        window.handleLogout = function() {
+            console.log('Dados salvos localmente. A funcionalidade de "Sair" apenas recarrega a página no modo Local Storage.');
+            window.location.reload(); 
         }
 
         // ------------------
         // INICIALIZAÇÃO DA APLICAÇÃO
         // ------------------
         
-        async function initApp() {
-            // 1. Inicializa o Firebase
-            try {
-                if (Object.keys(firebaseConfig).length > 0) {
-                    app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-                    
-                    // Autenticação (tentativa com token personalizado ou anônima)
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } else {
-                    // Fallback se firebaseConfig não estiver disponível
-                    console.error("Configuração do Firebase ausente.");
-                    return;
-                }
-            } catch (error) {
-                console.error("Erro na inicialização do Firebase:", error);
-                return;
-            }
+        function initApp() {
             
-            // 2. Obtém referências DOM
+            // 1. Obtém referências DOM
             processListContainer = document.getElementById('processListContainer');
             noProcessesMessage = document.getElementById('noProcessesMessage');
             credentialsDisplay = document.getElementById('credentialsDisplay');
@@ -1037,7 +1031,6 @@
             processIdEl = document.getElementById('processId');
             duplicityErrorEl = document.getElementById('duplicityError');
             processSubmitButtonEl = document.getElementById('processSubmitButton');
-            const copyPixKeyButton = document.getElementById('copyPixKey');
             
             // Referências do Form de Cadastro
             inputAuthorEl = document.getElementById('inputAuthor'); 
@@ -1060,10 +1053,14 @@
             editCredentialRegistryEl = document.getElementById('editCredentialRegistry');
 
 
-            // 3. Adiciona Event Listeners que NÃO dependem do estado de autenticação
-            if (copyPixKeyButton) {
-                copyPixKeyButton.addEventListener('click', copyPixKey);
-            }
+            // 2. Carrega Dados do Local Storage e Renderiza
+            loadCredentials(); 
+            renderCredentials(); 
+            loadProcesses();
+            // renderProcesses é chamado dentro de loadProcesses
+            
+
+            // 3. Adiciona Event Listeners
             filterTypeEl?.addEventListener('change', renderProcesses);
             filterStatusEl?.addEventListener('change', renderProcesses);
             searchQueryEl?.addEventListener('keyup', renderProcesses);
@@ -1072,25 +1069,9 @@
                 inputProcessNumberEl.addEventListener('input', validateProcessNumber);
             }
 
-            // 4. Configura listener de estado de autenticação (Para operações que dependem de userId)
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    userId = user.uid;
-                } else {
-                    // Usuário deslogado ou anônimo
-                    userId = 'anonymous'; // Fallback
-                }
-                
-                // 5. Carrega Dados (Credenciais e Processos - Depende de userId)
-                // Usando o novo listener para credenciais
-                loadCredentialsListener(); 
-                loadProcesses();
+            // Garante que o estado inicial do botão de submissão está correto
+            validateProcessNumber(); 
 
-                // 6. Renderização Inicial dos processos (feita dentro de loadProcesses/onSnapshot)
-                if (!processListContainer || !noProcessesMessage) {
-                    console.error("Erro fatal: Não foi possível encontrar os containers principais do DOM na inicialização.");
-                }
-            });
         }
 
         // Expõe initApp para o escopo global (window)
