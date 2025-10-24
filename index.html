@@ -5,44 +5,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monitoramento de Perícias - Perito</title>
     
-    <!-- Carregamento do Tailwind CSS via CDN -->
+    
+
 <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
+        /* PALETA INSTITUCIONAL: ÍNDIGO (Primary) para branding e ações. Cores funcionais (Amber, Emerald, Red) mantidas para clareza de status. */
         :root {
-            --primary-color: #10B981; /* Emerald Green */
-            --secondary-color: #3B82F6; /* Blue */
+            --primary-color: #4F46E5; /* Indigo 600 - Cor de Ação Principal/Institucional */
+            --primary-color-dark: #4338CA; /* Indigo 700 - Hover */
+            --pix-color: #F59E0B;     /* Amber 500 - Cor Funcional para Destaque Financeiro (PIX) */
+            --success-color: #059669; /* Emerald 600 - Cor Funcional para Concluído/Sucesso */
+            --danger-color: #DC2626;  /* Red 600 - Cor Funcional para Prazo Final/Perigo */
         }
-        /* Ajuste no padding do corpo para acomodar a barra PIX fixa no topo */
+        
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            padding-top: 4rem; /* Aumentado para acomodar o PIX mais destacado */
-        }
-        .card {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-        }
-        /* Definição de cores customizadas para o PIX/Doação */
-        .pix-gradient {
-            background: linear-gradient(90deg, #10b981 0%, #059669 100%); /* Verde/Esmeralda */
-        }
-        /* Animação do pulso de sombra (verde) para PIX - MAIS EVIDENTE */
-        @keyframes pulse-green-pix {
-            0%, 100% {
-                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7), 0 0 15px rgba(16, 185, 129, 0.5); /* Sombra inicial e glow */
-            }
-            70% {
-                box-shadow: 0 0 0 10px rgba(16, 185, 129, 0), 0 0 25px rgba(16, 185, 129, 0.8); /* Pulso maior e glow mais forte */
-            }
-        }
-        .pix-pulse-effect {
-            animation: pulse-green-pix 2s infinite cubic-bezier(0.4, 0, 0.6, 1); /* Ajustado timing */
+            background-color: #f3f4f6; /* Gray 100 */
+            padding: 1rem 1rem 2rem; 
         }
 
-        /* Classes existentes */
+        /* CLASSE PADRÃO PARA UNIFORMIZAÇÃO DE CARTÕES E SEÇÕES */
+        .section-card {
+            background-color: white;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* shadow-md */
+            transition: box-shadow 0.2s ease-out;
+        }
+
+        /* Gradiente para o botão PIX (ÂMBAR) */
+        .pix-gradient {
+            background: linear-gradient(90deg, var(--pix-color) 0%, #D97706 100%); /* Amber 500 to Amber 700 */
+        }
+        
+        /* Animação do pulso de sombra (ÂMBAR) para a BARRA PIX */
+        @keyframes pulse-amber-pix {
+            /* Usando um tono de Amber para o pulse */
+            0% {
+                box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4), 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
+            }
+            50% {
+                box-shadow: 0 0 12px 4px rgba(245, 158, 11, 0.7), 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4), 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
+            }
+        }
+
+        .pix-pulse-effect {
+            animation: pulse-amber-pix 2s ease-in-out infinite; 
+            transition: box-shadow 0.3s ease-in-out; 
+        }
+
+        /* Animação do pulso de sombra (vermelho) - MANTIDA PARA ALERTAS DE PRAZO */
+        @keyframes pulse-red {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7), 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
+            }
+            70% {
+                box-shadow: 0 0 0 8px rgba(220, 38, 38, 0), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+        }
         .deadline-due {
             animation: pulse-red 1.5s infinite;
         }
+
+        /* CORES DE STATUS CONCISAS */
         .status-badge {
             font-weight: 600;
             padding: 4px 10px;
@@ -50,32 +78,28 @@
             font-size: 0.75rem;
             text-transform: uppercase;
         }
-        .status-aberto { background-color: #FCD34D; color: #92400E; } /* Amarelo */
-        .status-concluido { background-color: #34D399; color: #065F46; } /* Verde */
-        .status-prazo-final { background-color: #F87171; color: #991B1B; } /* Vermelho */
+        /* Em Andamento: LIGHT INDIGO (alinhado com a primary color) */
+        .status-em-andamento { background-color: #EEF2FF; color: var(--primary-color); } 
+        /* Pendente: LIGHT BLUE-INDIGO (neutro, esperando) */
+        .status-pendente { background-color: #E0E7FF; color: #6366F1; } 
+        /* Esmeralda/Verde: Concluído/Sucesso */
+        .status-concluido { background-color: #ECFDF5; color: var(--success-color); } 
+        /* Vermelho: Prazo Final/Atrasado */
+        .status-prazo-final { background-color: #FEF2F2; color: var(--danger-color); } 
 
-        /* Animação do pulso de sombra (vermelho) */
-        @keyframes pulse-red {
-            0%, 100% {
-                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.7), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            }
-            70% {
-                box-shadow: 0 0 0 8px rgba(248, 113, 113, 0), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            }
-        }
-        /* Estilos específicos para o modal e formulário */
-        .modal-bg { background-color: rgba(0, 0, 0, 0.5); }
-        input[type="text"], input[type="date"], select, textarea, input[type="file"] {
-            border: 1px solid #D1D5DB;
-            padding: 10px;
-            border-radius: 0.5rem;
-            transition: all 0.2s;
-        }
+        /* Estilos de Foco - ÍNDIGO */
         input:focus, select:focus, textarea:focus {
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); 
             outline: none;
         }
+        
+        /* Estilo de Erro (para duplicidade) */
+        .input-error {
+            border-color: var(--danger-color) !important;
+            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2) !important;
+        }
+        
         .btn-primary {
             background-color: var(--primary-color);
             color: white;
@@ -83,87 +107,145 @@
             border-radius: 0.5rem;
             transition: background-color 0.2s;
         }
-        .btn-primary:hover {
-            background-color: #059669;
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--primary-color-dark); 
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Estilo para o fundo dos modais */
+        .modal-bg {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        /* --- ANIMAÇÕES --- */
+
+        /* Animação para entrada dos cards */
+        @keyframes fade-in-up {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in-up {
+            animation: fade-in-up 0.5s ease-out forwards;
+        }
+
+        /* Animação de escala para cards no hover */
+        .card-hover-scale {
+            transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+        }
+        .card-hover-scale:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Animação de clique para botões */
+        .btn-click-scale {
+            transition: transform 0.1s ease-out;
+        }
+        .btn-click-scale:active {
+            transform: scale(0.95); 
         }
     </style>
 </head>
 
 <body class="px-4 md:px-8 pb-4 md:pb-8">
 
-    <!-- Barra de Apoio PIX Fixa no Topo -->
-    <div id="pix-bar" class="fixed top-0 left-0 right-0 z-[100] bg-emerald-700 border-b-2 border-emerald-500 shadow-xl p-2">
-        <div class="container mx-auto flex items-center justify-center sm:justify-between max-w-7xl px-0 sm:px-4 relative">
-            
-            <div class="flex items-center space-x-2">
-                <!-- ÍCONE PROFISSIONAL CORRIGIDO: Cifrão em Círculo -->
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 10v-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <span class="text-base font-semibold text-white whitespace-nowrap">
-                    Apoie o Monitoramento via PIX:
-                </span>
-            </div>
-            
-            <div class="flex items-center space-x-2 mt-2 sm:mt-0">
-                <!-- Chave PIX -->
-                <span id="pix-key-display" class="text-sm sm:text-base font-mono text-emerald-800 bg-emerald-100 px-3 py-1.5 rounded-md border border-emerald-300 select-all cursor-text shadow-inner">
-                    87988593247
-                </span>
-                
-                <!-- Botão Copiar -->
-                <button 
-                    id="copy-button"
-                    class="pix-gradient text-white text-sm font-medium py-1.5 px-4 rounded-lg shadow-lg hover:opacity-90 transition duration-150 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-75 flex items-center pix-pulse-effect border-2 border-emerald-300"
-                    onclick="copyPixKey()">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3"></path></svg>
-                    Copiar
-                </button>
-            </div>
-            
-            <!-- Mensagem de Confirmação -->
-            <div id="confirmation-message" class="absolute left-1/2 -bottom-2 transform -translate-x-1/2 translate-y-full mt-1 bg-green-600 text-white text-xs px-3 py-1 rounded-full opacity-0 transition-opacity duration-300 pointer-events-none shadow-lg">
-                Chave PIX copiada!
-            </div>
-            
-        </div>
-    </div>
     
-    <!-- Cabeçalho Principal -->
-    <header class="mb-8 p-4 bg-white rounded-xl shadow-lg">
+<!-- HEADER: Mantém p-6 e shadow uniforme -->
+<header class="mb-8 p-6 section-card">
         
         <p class="text-xs text-gray-400 text-right mb-4 border-b pb-2">
             Ferramenta de monitoramento local para Peritos(as)
         </p>
 
-        <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+        <!-- BLOCO CENTRALIZADO -->
+        <div class="text-center mb-6">
             
-            <h1 class="text-3xl font-bold text-gray-800 text-center w-full mb-4 md:mb-0">
+            <h1 class="text-3xl font-extrabold text-gray-800 mb-1">
                 Monitoramento de Perícias
             </h1>
-            <button onclick="openProcessModal()" class="btn-primary flex items-center text-sm md:text-base">
+            
+            <p class="text-sm font-medium text-gray-500">
+                Desenvolvido por: <span class="font-semibold text-indigo-600">Matheus Carlos</span>
+            </p>
+            
+        </div>
+        
+        <!-- BOTÃO CENTRALIZADO -->
+        <div class="flex justify-center mb-6">
+            <button onclick="openProcessModal()" class="btn-primary flex items-center text-sm md:text-base btn-click-scale w-full max-w-xs">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                 Novo Processo
             </button>
         </div>
+        
 
-        <!-- Card de Perfil/Credenciais -->
-        <div id="profileCard" class="flex items-center p-4 bg-gray-50 rounded-lg border border-gray-200 transition duration-300 hover:shadow-md cursor-pointer" onclick="openCredentialsModal()">
+        <!-- CARTÃO DO PERFIL: Usando bg-gray-50 para leve distinção -->
+        <div id="profileCard" class="flex items-center p-4 bg-gray-50 rounded-lg border border-gray-200 transition duration-300 hover:shadow-md cursor-pointer card-hover-scale" onclick="openCredentialsModal()">
             
-            <img src="https://placehold.co/64x64/10B981/ffffff?text=P" alt="Ícone de Perfil" class="w-16 h-16 rounded-full profile-icon border-4 border-emerald-500 mr-4">
-            <div>
-                <h2 class="text-xl font-bold text-gray-900">Carregando Perfil...</h2>
-                <p class="text-sm text-gray-500">Aguarde</p>
+            <img src="https://placehold.co/64x64/4F46E5/ffffff?text=P" alt="Ícone de Perfil" class="w-16 h-16 rounded-full profile-icon border-4 border-indigo-500 mr-4">
+            <div class="flex-grow">
+                <h2 class="text-xl font-bold text-gray-900 truncate">Carregando Perfil...</h2>
+                <p class="text-sm text-gray-500 truncate">Aguarde</p>
             </div>
-            <button onclick="openCredentialsModal(event)" class="text-blue-500 hover:text-blue-700 transition ml-auto text-sm">
-                Editar Credenciais
+            
+            <button onclick="openCredentialsModal(event)" class="text-indigo-500 hover:text-indigo-700 transition ml-auto text-sm flex-shrink-0 btn-click-scale">
+                Editar
             </button>
         </div>
     </header>
 
-    <!-- Filtros de Processos -->
-    <section class="mb-8 p-4 bg-white rounded-xl shadow-lg grid grid-cols-1 md:grid-cols-4 gap-4">
+    
+<!-- PIX BANNER: Uniformizado com borda superior Âmbar e efeito de pulse de sombra -->
+<section id="pix-bar" class="mb-8 p-6 section-card border-t-4 border-amber-500 pix-pulse-effect relative">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full">
+            
+            <div class="flex items-center space-x-3 mb-3 sm:mb-0 flex-shrink-0">
+                <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 10v-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span class="text-base font-semibold text-gray-800">
+                    Apoie o Monitoramento via PIX:
+                </span>
+            </div>
+            
+            <div class="flex items-center space-x-2 w-full mt-3 sm:mt-0 sm:w-auto sm:justify-end">
+                
+                <!-- Chave PIX mais discreta e alinhada -->
+                <span id="pix-key-display" class="text-xs md:text-sm font-mono text-gray-800 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-300 select-all cursor-text shadow-inner overflow-hidden text-ellipsis flex-grow">
+                    87988593247
+                </span>
+                
+                <button 
+                    id="copy-button"
+                    class="pix-gradient text-white text-xs md:text-sm font-medium py-1.5 px-4 rounded-lg shadow-md hover:opacity-90 transition duration-150 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-opacity-75 flex items-center border border-amber-300 btn-click-scale flex-shrink-0"
+                    onclick="copyPixKey()">
+                    <svg class="w-3 h-3 md:w-4 md:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3"></path></svg>
+                    Copiar
+                </button>
+            </div>
+            
+            <!-- Mensagem de confirmação centralizada -->
+            <div id="confirmation-message" class="absolute left-1/2 -bottom-2 transform -translate-x-1/2 translate-y-full mt-1 bg-emerald-600 text-white text-xs px-3 py-1 rounded-full opacity-0 transition-opacity duration-300 pointer-events-none shadow-lg whitespace-nowrap">
+                Chave PIX copiada!
+            </div>
+            
+        </div>
+    </section>
+
+    
+<!-- FILTROS: Usa p-6 e classes uniformes -->
+<section class="mb-8 p-6 section-card grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
             <label for="filterType" class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-            <select id="filterType" class="w-full">
+            <select id="filterType" class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm">
                 <option value="">Todos os Tipos</option>
                 <option value="Financeira">Financeira</option>
                 <option value="Trabalhista">Trabalhista</option>
@@ -171,29 +253,32 @@
         </div>
         <div>
             <label for="filterStatus" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select id="filterStatus" class="w-full">
+            <select id="filterStatus" class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm">
                 <option value="">Todos os Status</option>
-                <option value="Aberto">Aberto</option>
+                <option value="Em Andamento">Em Andamento</option>
+                <option value="Pendente">Pendente</option>
                 <option value="Prazo Final">Prazo Final</option>
                 <option value="Concluído">Concluído</option>
             </select>
         </div>
         <div class="md:col-span-2">
             <label for="searchQuery" class="block text-sm font-medium text-gray-700 mb-1">Buscar (Nº Processo, Cliente)</label>
-            <input type="text" id="searchQuery" placeholder="Digite para buscar..." class="w-full">
+            <input type="text" id="searchQuery" placeholder="Digite para buscar..." class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm">
         </div>
     </section>
 
-    <!-- Lista de Processos -->
-    <main class="grid grid-cols-1 gap-6" id="processListContainer">
+    
+<!-- MUDANÇA APLICADA AQUI: Adição de md:grid-cols-2 e lg:grid-cols-3 para tornar os cards menores -->
+<main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="processListContainer">
         
-        <p id="noProcessesMessage" class="text-center text-gray-500 hidden p-8 bg-white rounded-xl card">Nenhum processo encontrado. Adicione um novo para começar.</p>
+        <p id="noProcessesMessage" class="text-center text-gray-500 hidden p-8 section-card md:col-span-2 lg:col-span-3">Nenhum processo encontrado. Adicione um novo para começar.</p>
     </main>
 
-    <!-- Modal de Adição/Edição de Processo -->
-    <div id="processModal" class="fixed inset-0 z-50 modal-bg hidden justify-center items-center p-4">
+    
+<!-- MODAL DE PROCESSO: Usa section-card para o modal body -->
+<div id="processModal" class="fixed inset-0 z-50 modal-bg hidden justify-center items-center p-4">
         
-        <div class="bg-white rounded-xl w-full max-w-2xl card overflow-hidden">
+        <div class="section-card w-full max-w-2xl overflow-y-auto max-h-full">
             <div class="p-6">
                 <h2 id="modalTitle" class="text-2xl font-bold text-gray-800 mb-4">Adicionar Novo Processo</h2>
                 <form id="processForm">
@@ -201,43 +286,50 @@
 
                     <div class="mb-4">
                         <label for="inputProcessNumber" class="block text-sm font-medium text-gray-700 mb-1">Número do Processo (Ex: 12345-67.2024.8.26.0000)</label>
-                        <input type="text" id="inputProcessNumber" required class="w-full">
+                        <input type="text" id="inputProcessNumber" required class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm transition duration-150">
+                        
+                        <!-- FEEDBACK DE DUPLICIDADE EM TEMPO REAL -->
+                        <p id="duplicityError" class="mt-1 text-sm text-red-600 font-medium hidden">
+                            <svg class="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.398 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            Este número de processo já está cadastrado.
+                        </p>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label for="inputType" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Perícia</label>
-                            <select id="inputType" required class="w-full">
+                            <select id="inputType" required class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm">
                                 <option value="Financeira">Financeira</option>
                                 <option value="Trabalhista">Trabalhista</option>
                             </select>
                         </div>
                         <div>
                             <label for="inputDeadline" class="block text-sm font-medium text-gray-700 mb-1">Prazo Final (Data)</label>
-                            <input type="date" id="inputDeadline" required class="w-full">
+                            <input type="date" id="inputDeadline" required class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm">
                         </div>
                     </div>
 
                     <div class="mb-4">
                         <label for="inputClientName" class="block text-sm font-medium text-gray-700 mb-1">Nome do Cliente/Parte</label>
-                        <input type="text" id="inputClientName" required class="w-full">
+                        <input type="text" id="inputClientName" required class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm">
                     </div>
 
                     <div class="mb-4">
                         <label for="inputJudicialDistrict" class="block text-sm font-medium text-gray-700 mb-1">Comarca/Vara</label>
-                        <input type="text" id="inputJudicialDistrict" required class="w-full">
+                        <input type="text" id="inputJudicialDistrict" required class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm">
                     </div>
 
                     <div class="mb-4">
                         <label for="inputDescription" class="block text-sm font-medium text-gray-700 mb-1">Descrição Breve do Caso</label>
-                        <textarea id="inputDescription" rows="3" class="w-full"></textarea>
+                        <textarea id="inputDescription" rows="3" class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm"></textarea>
                     </div>
 
                     <div class="flex justify-end space-x-3">
-                        <button type="button" onclick="closeProcessModal()" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition">
+                        <button type="button" onclick="closeProcessModal()" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition btn-click-scale">
                             Cancelar
                         </button>
-                        <button type="submit" class="btn-primary">
+                        
+                        <button type="submit" id="processSubmitButton" class="btn-primary btn-click-scale">
                             Salvar Processo
                         </button>
                     </div>
@@ -246,34 +338,37 @@
         </div>
     </div>
 
-    <!-- Modal de Credenciais do Perito -->
-    <div id="credentialsModal" class="fixed inset-0 z-50 modal-bg hidden justify-center items-center p-4">
+    
+<!-- MODAL DE CREDENCIAIS: Usa section-card para o modal body -->
+<div id="credentialsModal" class="fixed inset-0 z-50 modal-bg hidden justify-center items-center p-4">
         
-        <div class="bg-white rounded-xl w-full max-w-xl card overflow-hidden">
+        <div class="section-card w-full max-w-xl overflow-y-auto max-h-full">
             <div class="p-6">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">Minhas Credenciais</h2>
                 <form id="credentialsForm">
                     <div class="mb-4">
                         <label for="inputFullName" class="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
-                        <input type="text" id="inputFullName" required class="w-full" placeholder="Ex: Perito João da Silva">
+                        <input type="text" id="inputFullName" required class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm" placeholder="Ex: Perito João da Silva">
                     </div>
 
                     <div class="mb-4">
                         <label for="inputRegistration" class="block text-sm font-medium text-gray-700 mb-1">Nº de Registro (CRA/CRC)</label>
-                        <input type="text" id="inputRegistration" required class="w-full" placeholder="Ex: CRC 123456/O-1">
+                        <input type="text" id="inputRegistration" required class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm" placeholder="Ex: CRC 123456/O-1">
                     </div>
                     
                     <div class="mb-4">
                         <label for="inputProfileImageFile" class="block text-sm font-medium text-gray-700 mb-1">Imagem de Perfil (Arquivo Local)</label>
-                        <input type="file" id="inputProfileImageFile" accept="image/*" class="w-full p-2 border border-gray-300 rounded-lg bg-gray-50">
+                        
+                        <input type="file" id="inputProfileImageFile" accept="image/*" class="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 shadow-sm">
                         <p class="text-xs text-gray-500 mt-1">Selecione uma imagem local. (Máximo 1MB)</p>
                     </div>
 
                     <div class="flex justify-end space-x-3">
-                        <button type="button" onclick="closeCredentialsModal()" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition">
+                        <button type="button" onclick="closeCredentialsModal()" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition btn-click-scale">
                             Cancelar
                         </button>
-                        <button type="submit" class="btn-primary">
+                        
+                        <button type="submit" class="btn-primary btn-click-scale">
                             Salvar Credenciais
                         </button>
                     </div>
@@ -282,8 +377,9 @@
         </div>
     </div>
 
-    <!-- Mensagem de Feedback (Substituto para alert) -->
-    <div id="feedbackMessage" class="fixed bottom-4 right-4 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 opacity-0 hidden z-50" style="min-width: 250px;"></div>
+    
+<!-- Mensagem de feedback (alerta) -->
+<div id="feedbackMessage" class="fixed bottom-4 right-4 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 opacity-0 hidden z-50" style="min-width: 250px;"></div>
 
     <script>
         // Variáveis globais para armazenar os dados e elementos DOM
@@ -298,6 +394,12 @@
         let filterTypeEl = null;
         let filterStatusEl = null;
         let searchQueryEl = null;
+        
+        // NOVAS REFERÊNCIAS DOM PARA VALIDAÇÃO DE DUPLICIDADE
+        let inputProcessNumberEl = null;
+        let processIdEl = null;
+        let duplicityErrorEl = null;
+        let processSubmitButtonEl = null;
 
         // --- Utilitários de Data ---
         const today = new Date();
@@ -334,10 +436,10 @@
 
         function loadCredentials() {
             const data = localStorage.getItem(CREDENTIALS_KEY);
-            // iconUrl pode ser uma URL externa ou uma string Base64
             userCredentials = data ? JSON.parse(data) : {
                 fullName: 'Nome do Perito(a)',
-                iconUrl: 'https://placehold.co/64x64/10B981/ffffff?text=P',
+                // Placeholder ÍNDIGO: Cor profissional primária
+                iconUrl: 'https://placehold.co/64x64/4F46E5/ffffff?text=P', 
                 registration: 'CRA/CRC 000000'
             };
         }
@@ -350,17 +452,19 @@
             const profileCard = document.getElementById('profileCard');
             if (!profileCard) return;
 
-            const icon = userCredentials.iconUrl || 'https://placehold.co/64x64/10B981/ffffff?text=P';
+            // Placeholder ÍNDIGO: Cor profissional primária
+            const icon = userCredentials.iconUrl || 'https://placehold.co/64x64/4F46E5/ffffff?text=P'; 
             
             profileCard.innerHTML = `
-                <img src="${icon}" onerror="this.onerror=null;this.src='https://placehold.co/64x64/10B981/ffffff?text=P'" 
-                     alt="Ícone de Perfil" class="w-16 h-16 rounded-full profile-icon border-4 border-emerald-500 mr-4">
-                <div>
-                    <h2 class="text-xl font-bold text-gray-900">${userCredentials.fullName}</h2>
-                    <p class="text-sm text-gray-500">${userCredentials.registration}</p>
+                <img src="${icon}" onerror="this.onerror=null;this.src='https://placehold.co/64x64/4F46E5/ffffff?text=P'" 
+                     alt="Ícone de Perfil" class="w-16 h-16 rounded-full profile-icon border-4 border-indigo-500 mr-4 flex-shrink-0">
+                <div class="flex-grow min-w-0">
+                    <h2 class="text-xl font-bold text-gray-900 truncate">${userCredentials.fullName}</h2>
+                    <p class="text-sm text-gray-500 truncate">${userCredentials.registration}</p>
                 </div>
-                <button onclick="openCredentialsModal(event)" class="text-blue-500 hover:text-blue-700 transition ml-auto text-sm">
-                    Editar Credenciais
+                
+                <button onclick="openCredentialsModal(event)" class="text-indigo-500 hover:text-indigo-700 transition ml-auto text-sm flex-shrink-0 btn-click-scale">
+                    Editar
                 </button>
             `;
         }
@@ -392,7 +496,7 @@
             const MAX_SIZE = 1048576; 
             
             if (file && file.size > MAX_SIZE) {
-                showFeedback('A imagem é muito grande. Tamanho máximo permitido: 1MB.', 'bg-red-500');
+                showFeedback('A imagem é muito grande. Tamanho máximo permitido: 1MB.', 'bg-red-600');
                 return;
             }
 
@@ -405,15 +509,16 @@
                     saveCredentials();
                     renderCredentials();
                     closeCredentialsModal();
-                    showFeedback('Credenciais e imagem salvas com sucesso!', 'bg-emerald-500');
+                    showFeedback('Credenciais e imagem salvas com sucesso!', 'bg-emerald-600');
                 };
                 reader.onerror = function() {
-                    showFeedback('Erro ao ler o arquivo de imagem.', 'bg-red-500');
+                    showFeedback('Erro ao ler o arquivo de imagem.', 'bg-red-600');
                 };
                 reader.readAsDataURL(file); // Lê o arquivo como Base64
             } else {
                 // Se nenhum arquivo novo foi selecionado, mantém o valor existente ou o placeholder padrão
-                const currentIcon = userCredentials.iconUrl || 'https://placehold.co/64x64/10B981/ffffff?text=P';
+                // Placeholder ÍNDIGO: Cor profissional primária
+                const currentIcon = userCredentials.iconUrl || 'https://placehold.co/64x64/4F46E5/ffffff?text=P'; 
 
                 userCredentials = { 
                     fullName, 
@@ -423,7 +528,7 @@
                 saveCredentials();
                 renderCredentials();
                 closeCredentialsModal();
-                showFeedback('Credenciais salvas com sucesso!', 'bg-emerald-500');
+                showFeedback('Credenciais salvas com sucesso!', 'bg-emerald-600');
             }
         }
 
@@ -437,6 +542,46 @@
             readAndSaveProfileImage(imageFile, fullName, registration);
         });
 
+        // --- Validação de Duplicidade em Tempo Real ---
+
+        function checkDuplicity() {
+            // Obtém o valor atual, removendo espaços para comparação
+            const currentProcessNumber = inputProcessNumberEl.value.trim().toLowerCase();
+            
+            // Obtém o ID do processo que está sendo editado (se houver)
+            const currentProcessId = processIdEl.value ? Number(processIdEl.value) : null;
+
+            if (currentProcessNumber === '') {
+                // Se o campo estiver vazio, não é considerado um erro de duplicidade
+                return false; 
+            }
+
+            // Verifica se existe algum processo com o mesmo número,
+            // EXCLUINDO o processo que está sendo editado (se currentProcessId não for null)
+            const isDuplicate = processes.some(p => 
+                p.processNumber.toLowerCase() === currentProcessNumber && p.id !== currentProcessId
+            );
+
+            return isDuplicate;
+        }
+
+        function validateProcessNumber() {
+            if (checkDuplicity()) {
+                // Erro: Duplicidade
+                inputProcessNumberEl.classList.add('input-error');
+                duplicityErrorEl.classList.remove('hidden');
+                processSubmitButtonEl.disabled = true;
+                processSubmitButtonEl.textContent = 'Número Duplicado';
+
+            } else {
+                // Sucesso: Único
+                inputProcessNumberEl.classList.remove('input-error');
+                duplicityErrorEl.classList.add('hidden');
+                processSubmitButtonEl.disabled = false;
+                processSubmitButtonEl.textContent = 'Salvar Processo'; // Restaura o texto original
+            }
+        }
+
         // --- Funções do Modal e Formulário de Processos ---
 
         function openProcessModal(processId = null) {
@@ -445,13 +590,19 @@
             const modalTitle = document.getElementById('modalTitle');
             
             form.reset(); // Limpa o formulário
+            
+            // Limpa o estado de erro de duplicidade ao abrir o modal
+            inputProcessNumberEl.classList.remove('input-error');
+            duplicityErrorEl.classList.add('hidden');
+            processSubmitButtonEl.disabled = false;
+            processSubmitButtonEl.textContent = 'Salvar Processo'; 
 
             if (processId !== null) {
                 const process = processes.find(p => p.id === processId);
                 if (process) {
                     modalTitle.textContent = 'Editar Processo';
-                    document.getElementById('processId').value = process.id;
-                    document.getElementById('inputProcessNumber').value = process.processNumber || '';
+                    processIdEl.value = process.id;
+                    inputProcessNumberEl.value = process.processNumber || '';
                     document.getElementById('inputType').value = process.type || 'Financeira';
                     document.getElementById('inputDeadline').value = process.deadline || '';
                     document.getElementById('inputClientName').value = process.clientName || '';
@@ -460,11 +611,13 @@
                 }
             } else {
                 modalTitle.textContent = 'Adicionar Novo Processo';
-                document.getElementById('processId').value = '';
+                processIdEl.value = '';
             }
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+            // Garante que a validação inicial seja executada caso o campo não esteja vazio (principalmente em edição)
+            validateProcessNumber(); 
         }
 
         function closeProcessModal() {
@@ -477,8 +630,14 @@
         document.getElementById('processForm').addEventListener('submit', function(event) {
             event.preventDefault();
             
-            const id = document.getElementById('processId').value;
-            const processNumber = document.getElementById('inputProcessNumber').value.trim();
+            // Impede a submissão se a duplicidade ainda for um erro
+            if (processSubmitButtonEl.disabled) {
+                showFeedback('Erro: Não é possível salvar. Número de processo duplicado.', 'bg-red-600');
+                return;
+            }
+
+            const id = processIdEl.value;
+            const processNumber = inputProcessNumberEl.value.trim();
             const type = document.getElementById('inputType').value;
             const deadline = document.getElementById('inputDeadline').value;
             const clientName = document.getElementById('inputClientName').value.trim();
@@ -499,16 +658,16 @@
                 // Edição
                 const index = processes.findIndex(p => p.id === Number(id));
                 if (index !== -1) {
-                    // Mantém o status e ID original
+                    // Mantém o status original, mas atualiza os demais campos
                     processes[index] = { ...processes[index], ...newProcess };
-                    showFeedback('Processo atualizado com sucesso!', 'bg-blue-500');
+                    showFeedback('Processo atualizado com sucesso!', 'bg-indigo-600'); // Indigo para ação
                 }
             } else {
                 // Novo Processo
                 newProcess.id = Date.now(); // ID único simples
-                newProcess.status = 'Aberto'; // Status inicial
+                newProcess.status = 'Em Andamento'; // Status inicial padronizado
                 processes.push(newProcess);
-                showFeedback('Novo processo adicionado!', 'bg-emerald-500');
+                showFeedback('Novo processo adicionado!', 'bg-emerald-600');
             }
 
             saveProcesses();
@@ -521,11 +680,12 @@
         function updateProcessStatus(id, newStatus) {
             const process = processes.find(p => p.id === id);
             if (process) {
+                // Atualiza o status armazenado
                 process.status = newStatus;
                 process.lastUpdate = new Date().toISOString().split('T')[0];
                 saveProcesses();
                 renderProcesses();
-                showFeedback(`Status do processo ${process.processNumber} alterado para "${newStatus}".`, 'bg-blue-500');
+                showFeedback(`Status do processo ${process.processNumber} alterado para "${newStatus}".`, 'bg-indigo-600');
             }
         }
 
@@ -533,30 +693,51 @@
             processes = processes.filter(p => p.id !== id);
             saveProcesses();
             renderProcesses();
-            showFeedback('Processo excluído com sucesso.', 'bg-red-500');
+            showFeedback('Processo excluído com sucesso.', 'bg-red-600');
             
         }
 
         // --- Renderização e Filtros ---
 
-        function getProcessStatus(process) {
-            // Se já estiver concluído, mantém o status
-            if (process.status === 'Concluído') {
-                return { status: 'Concluído', class: 'status-concluido' };
-            }
+        /**
+         * Determina o status de exibição e a classe CSS com base no status armazenado e no prazo.
+         * @param {object} process O objeto processo.
+         * @returns {object} Informações detalhadas do status para exibição e classificação.
+         */
+        function getProcessDisplayInfo(process) {
+            const storedStatus = process.status || 'Em Andamento';
+            let displayStatus = storedStatus;
+            let statusClass = '';
+            let isUrgent = false;
 
-            const daysLeft = getDaysUntil(process.deadline);
-            
-            if (daysLeft < 0) {
-                // Prazo já expirou
-                return { status: 'Prazo Final (Expirado)', class: 'status-prazo-final deadline-due' };
-            } else if (daysLeft <= 7) {
-                // Prazo nos próximos 7 dias (incluindo hoje e amanhã)
-                return { status: 'Prazo Final', class: 'status-prazo-final deadline-due' };
-            } else {
-                // Aberto e com prazo ok
-                return { status: 'Aberto', class: 'status-aberto' };
+            if (storedStatus === 'Concluído') {
+                statusClass = 'status-concluido';
+            } else if (storedStatus === 'Pendente') {
+                statusClass = 'status-pendente';
+            } else { // Tratar 'Em Andamento' (ou qualquer outro status desconhecido como Em Andamento)
+                const daysLeft = getDaysUntil(process.deadline);
+                
+                if (daysLeft < 0) {
+                    displayStatus = 'Prazo Final (Expirado)';
+                    statusClass = 'status-prazo-final deadline-due';
+                    isUrgent = true;
+                } else if (daysLeft <= 7) {
+                    displayStatus = 'Prazo Final';
+                    statusClass = 'status-prazo-final deadline-due';
+                    isUrgent = true;
+                } else {
+                    displayStatus = 'Em Andamento';
+                    statusClass = 'status-em-andamento';
+                }
             }
+            
+            return { 
+                storedStatus, // Status que está salvo no objeto ('Em Andamento', 'Pendente', 'Concluído')
+                displayStatus, // Status que será mostrado no badge (ex: 'Prazo Final (Expirado)')
+                statusClass, 
+                isUrgent,
+                daysLeft: getDaysUntil(process.deadline)
+            };
         }
         
         function renderProcesses() {
@@ -570,33 +751,40 @@
             const searchQuery = searchQueryEl ? searchQueryEl.value.toLowerCase() : '';
 
             // 1. Processar e Filtrar
-            const filteredProcesses = processes.map(process => {
-                // Atualiza o status dinamicamente
-                const statusInfo = getProcessStatus(process);
-                process.status = statusInfo.status.split(' (')[0]; // Remove o '(Expirado)' para o filtro
-                process.statusClass = statusInfo.class;
-                process.daysLeft = getDaysUntil(process.deadline);
-                return process;
-            }).filter(process => {
+            const processedProcesses = processes.map(process => {
+                const info = getProcessDisplayInfo(process);
+                return { ...process, ...info };
+            });
+
+            const filteredProcesses = processedProcesses.filter(process => {
                 const matchesType = !filterType || process.type.toLowerCase() === filterType;
-                // O filtro de status deve considerar o status "real" que vem da função getProcessStatus
-                const actualStatus = getProcessStatus(process).status.split(' (')[0];
-                const matchesStatus = !filterStatus || actualStatus === filterStatus;
+                
+                // Filtra pelo status de exibição para Prazo Final, mas pelo status armazenado para Concluído/Pendente/Em Andamento
+                let statusToMatch = process.storedStatus;
+                if (process.isUrgent) {
+                    statusToMatch = 'Prazo Final';
+                }
+
+                const matchesStatus = !filterStatus || 
+                                      (filterStatus === 'Prazo Final' && process.isUrgent) || 
+                                      (filterStatus !== 'Prazo Final' && process.storedStatus === filterStatus);
+
 
                 const matchesSearch = !searchQuery || 
                                       process.processNumber.toLowerCase().includes(searchQuery) ||
                                       process.clientName.toLowerCase().includes(searchQuery) ||
                                       process.description.toLowerCase().includes(searchQuery);
+                
                 return matchesType && matchesStatus && matchesSearch;
             });
 
             // 2. Ordenar: Prazos mais urgentes (menor diasLeft, incluindo negativos/expirados) primeiro.
             filteredProcesses.sort((a, b) => {
                 // 1º: Mover Concluídos para o final
-                if (a.status === 'Concluído' && b.status !== 'Concluído') return 1;
-                if (a.status !== 'Concluído' && b.status === 'Concluído') return -1;
+                if (a.storedStatus === 'Concluído' && b.storedStatus !== 'Concluído') return 1;
+                if (a.storedStatus !== 'Concluído' && b.storedStatus === 'Concluído') return -1;
                 
-                // 2º: Ordenar os demais (Aberto/Prazo Final) por dias restantes (do menor para o maior)
+                // 2º: Ordenar os demais (Em Andamento/Pendente/Prazo Final) por dias restantes (do menor para o maior)
                 return a.daysLeft - b.daysLeft;
             });
 
@@ -605,18 +793,22 @@
 
             if (filteredProcesses.length === 0) {
                 noProcessesMessage.classList.remove('hidden');
+                // Garante que a mensagem de "Nenhum processo" ocupe o espaço correto na grade
+                const gridSpanClass = processListContainer.classList.contains('lg:grid-cols-3') ? 'lg:col-span-3' : (processListContainer.classList.contains('md:grid-cols-2') ? 'md:col-span-2' : '');
+                noProcessesMessage.className = `text-center text-gray-500 p-8 section-card ${gridSpanClass}`;
                 return;
             }
 
             // 3. Renderizar
-            filteredProcesses.forEach(process => {
-                const isUrgent = process.statusClass.includes('deadline-due');
+            // Use um pequeno delay para a animação sequencial
+            filteredProcesses.forEach((process, index) => {
+                const isUrgent = process.isUrgent;
                 
+                // Usa a classe section-card base
                 const cardClasses = isUrgent
-                    ? 'border-2 border-red-500 deadline-due' // ADICIONADO: Classe de pulso ao card
-                    : 'border border-gray-100';
+                    ? 'border-t-4 border-red-500' // Borda superior vermelha para urgência
+                    : 'border border-gray-200';
 
-                // LÓGICA ATUALIZADA: Uso de Prazo AMANHÃ!
                 let daysText;
                 if (process.daysLeft < 0) {
                     const daysAgo = Math.abs(process.daysLeft);
@@ -635,60 +827,81 @@
                     ? 'bg-red-50 border-red-300'
                     : 'bg-gray-50 border-gray-200';
 
-                const iconColor = isUrgent ? 'text-red-600' : 'text-emerald-600';
+                const iconColor = isUrgent ? 'text-red-500' : 'text-indigo-600';
+                const typeColorClass = 'text-indigo-600 bg-indigo-50';
 
 
-                const processCard = `
-                    <div class="bg-white p-6 rounded-xl card transition duration-300 hover:shadow-xl ${cardClasses}">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-                            <div class="mb-2 sm:mb-0">
-                                <span class="status-badge ${process.statusClass}">${process.status.replace(' (Expirado)', '')}</span>
-                                <span class="ml-3 text-sm font-semibold text-blue-600 bg-blue-100 px-3 py-1 rounded-full">${process.type}</span>
+                const processCardHtml = `
+                    <div class="p-4 section-card transition duration-300 hover:shadow-xl ${cardClasses} card-hover-scale animate-fade-in-up" style="animation-delay: ${index * 0.1}s; opacity: 0;">
+                        
+                        <!-- TAGS E DATA - Reduzido mb-3 para mb-2 -->
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
+                            <div class="mb-2 sm:mb-0 flex items-center space-x-2 flex-wrap">
+                                <span class="status-badge ${process.statusClass}">
+                                    ${process.displayStatus.replace(' (Expirado)', '')}
+                                </span>
+                                <span class="text-xs font-semibold ${typeColorClass} px-2 py-0.5 rounded-full">
+                                    ${process.type}
+                                </span>
                             </div>
-                            <div class="flex items-center text-sm text-gray-500">
-                                <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h.01M13 11h.01M17 11h.01M6 15h.01M10 15h.01M14 15h.01M18 15h.01M6 19h.01M10 19h.01M14 19h.01M18 19h.01M4 20h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                Última Atualização: ${formatDate(process.lastUpdate)}
+                            <div class="flex items-center text-xs text-gray-500 flex-shrink-0">
+                                <svg class="w-3 h-3 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h.01M13 11h.01M17 11h.01M6 15h.01M10 15h.01M14 15h.01M18 15h.01M6 19h.01M10 19h.01M14 19h.01M18 19h.01M4 20h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                Atualização: ${formatDate(process.lastUpdate)}
                             </div>
                         </div>
 
-                        <h3 class="text-xl font-bold text-gray-900 mb-2">${process.processNumber}</h3>
-                        <p class="text-sm text-gray-700 mb-4">
-                            <strong>Cliente:</strong> ${process.clientName} | 
-                            <strong>Comarca:</strong> ${process.judicialDistrict}
+                        <h3 class="text-lg font-bold text-gray-900 mb-1 truncate">${process.processNumber}</h3>
+                        <p class="text-xs text-gray-700 mb-2">
+                            <span class="font-medium text-gray-800">Cliente:</span> ${process.clientName}
                         </p>
 
-                        <!-- Box de Prazo -->
-                        <div class="flex items-center mb-4 p-3 rounded-lg border ${deadlineBoxClasses}">
-                            <svg class="w-6 h-6 mr-2 ${iconColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        
+                        <!-- Box de Prazo: PADDING REDUZIDO de p-3 para p-2 e MARGEM mb-3 para mb-2 -->
+                        <div class="flex items-center mb-2 p-2 rounded-lg border ${deadlineBoxClasses}">
+                            <svg class="w-5 h-5 mr-2 ${iconColor} flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             <div>
                                 <p class="text-xs font-semibold text-gray-500 uppercase">Prazo de Entrega</p>
-                                <p class="text-lg font-bold ${daysColor}">${formatDate(process.deadline)}</p>
-                                <p class="text-sm ${daysColor}">${daysText}</p>
+                                <p class="text-md font-bold ${daysColor}">${formatDate(process.deadline)}</p>
+                                <p class="text-xs ${daysColor}">${daysText}</p>
                             </div>
                         </div>
 
-                        <p class="text-gray-600 mb-6">${process.description || 'Nenhuma descrição fornecida.'}</p>
+                        <!-- Descrição: Reduzido mb-4 para mb-3 -->
+                        <p class="text-sm text-gray-600 mb-3 h-10 overflow-hidden line-clamp-2">${process.description || 'Nenhuma descrição fornecida.'}</p>
 
-                        <!-- Ações -->
-                        <div class="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
-                            <button onclick="openProcessModal(${process.id})" class="text-blue-600 hover:text-blue-800 text-sm font-medium transition flex items-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-7l1.414 1.414M16 4l-1.414 1.414m-1.414 1.414l-4.243 4.243m-4.243 4.243l1.414 1.414m-1.414-1.414l4.243-4.243m4.243-4.243l-1.414-1.414m1.414 1.414l-4.243 4.243m-4.243-4.243l-1.414 1.414m-1.414 1.414l-4.243 4.243"></path></svg>
+                        
+                        <!-- Botões de Ação: PADDING SUPERIOR REDUZIDO de pt-3 para pt-2 -->
+                        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+                            
+                            <!-- Dropdown de Status -->
+                            <div class="relative flex-grow min-w-1/3">
+                                <label for="status-select-${process.id}" class="block text-xs font-semibold text-gray-600 mb-1">Status:</label>
+                                <select 
+                                    id="status-select-${process.id}"
+                                    onchange="updateProcessStatus(${process.id}, this.value)" 
+                                    class="w-full p-2 text-xs font-medium rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 transition cursor-pointer"
+                                >
+                                    <option value="Em Andamento" ${process.storedStatus === 'Em Andamento' ? 'selected' : ''}>Em Andamento</option>
+                                    <option value="Pendente" ${process.storedStatus === 'Pendente' ? 'selected' : ''}>Pendente</option>
+                                    <option value="Concluído" ${process.storedStatus === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Botão de Edição -->
+                            <button onclick="openProcessModal(${process.id})" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium transition flex items-center btn-click-scale p-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 flex-grow">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-7l1.414 1.414M16 4l-1.414 1.414m-1.414 1.414l-4.243 4.243m-4.243 4.243l1.414 1.414m-1.414 1.414l4.243-4.243m4.243-4.243l-1.414-1.414m1.414 1.414l-4.243 4.243m-4.243-4.243l-1.414 1.414m-1.414 1.414l-4.243 4.243"></path></svg>
                                 Editar
                             </button>
-                            ${process.status !== 'Concluído' ? 
-                                `<button onclick="updateProcessStatus(${process.id}, 'Concluído')" class="text-emerald-600 hover:text-emerald-800 text-sm font-medium transition flex items-center ml-4">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                    Concluir
-                                </button>` : ''
-                            }
-                            <button onclick="deleteProcess(${process.id})" class="text-red-600 hover:text-red-800 text-sm font-medium transition flex items-center ml-4">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            
+                            <!-- Botão de Excluir -->
+                            <button onclick="deleteProcess(${process.id})" class="text-red-600 hover:text-red-800 text-xs font-medium transition flex items-center btn-click-scale p-2 rounded-lg bg-red-50 hover:bg-red-100 flex-grow">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                 Excluir
                             </button>
                         </div>
                     </div>
                 `;
-                processListContainer.innerHTML += processCard;
+                processListContainer.innerHTML += processCardHtml;
             });
         }
         
@@ -696,8 +909,6 @@
 
         /**
          * Função para copiar a chave PIX para a área de transferência.
-         * Usa o método document.execCommand('copy') como fallback seguro 
-         * para ambientes de iframe.
          */
         function copyPixKey() {
             const pixKeyElement = document.getElementById('pix-key-display');
@@ -728,34 +939,34 @@
                 showPixConfirmation();
             } else {
                 console.error('Não foi possível copiar automaticamente.');
-                showFeedback('Erro: Não foi possível copiar a chave PIX.', 'bg-red-500');
+                showFeedback('Erro: Não foi possível copiar a chave PIX.', 'bg-red-600');
             }
         }
 
         /**
-         * Exibe a mensagem de confirmação de cópia do PIX e remove o pulso.
+         * Exibe a mensagem de confirmação de cópia do PIX e restaura o texto do botão.
          */
         function showPixConfirmation() {
             const messageElement = document.getElementById('confirmation-message');
             const button = document.getElementById('copy-button');
             
             // Torna a mensagem visível
-            messageElement.classList.remove('opacity-0');
+            messageElement.classList.remove('opacity-0', 'hidden');
             messageElement.classList.add('opacity-100');
             
-            // Remove o efeito pulsante da caixa principal temporariamente para indicar sucesso
-            button.classList.remove('pix-pulse-effect');
-            button.textContent = 'Copiado!';
+            // Altera o conteúdo do botão para "Copiado!" (apenas o texto)
+            button.innerHTML = '<svg class="w-3 h-3 md:w-4 md:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Copiado!';
 
-            // Timeout para esconder a mensagem e restaurar o pulso e texto do botão
+            // Timeout para esconder a mensagem
             setTimeout(() => {
                 messageElement.classList.remove('opacity-100');
                 messageElement.classList.add('opacity-0');
             }, 1500); 
 
+            // Timeout para restaurar o ícone e texto do botão
             setTimeout(() => {
-                button.classList.add('pix-pulse-effect');
-                button.innerHTML = '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3"></path></svg>Copiar';
+                // Garante que o ícone original seja restaurado
+                button.innerHTML = '<svg class="w-3 h-3 md:w-4 md:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3"></path></svg>Copiar';
             }, 2000); 
         }
 
@@ -763,6 +974,7 @@
         function showFeedback(message, bgColor) {
             const feedbackEl = document.getElementById('feedbackMessage');
             feedbackEl.textContent = message;
+            // Usa as classes Tailwind para cores e transição
             feedbackEl.className = `fixed bottom-4 right-4 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 z-50 ${bgColor}`;
             feedbackEl.classList.remove('opacity-0', 'hidden');
             feedbackEl.classList.add('opacity-100');
@@ -776,8 +988,6 @@
 
         // --- Inicialização ---
 
-        // Função de dados de exemplo removida conforme solicitado.
-
         window.onload = function() {
             // 1. Inicializa as referências DOM globais
             processListContainer = document.getElementById('processListContainer');
@@ -786,20 +996,30 @@
             filterStatusEl = document.getElementById('filterStatus');
             searchQueryEl = document.getElementById('searchQuery');
             
-            // 2. Carrega Dados (Credenciais e Processos)
+            // 2. Inicializa NOVAS referências DOM
+            inputProcessNumberEl = document.getElementById('inputProcessNumber');
+            processIdEl = document.getElementById('processId');
+            duplicityErrorEl = document.getElementById('duplicityError');
+            processSubmitButtonEl = document.getElementById('processSubmitButton');
+
+            // 3. Carrega Dados (Credenciais e Processos)
             loadCredentials();
             loadProcesses();
-            // seedData() foi removido daqui. O aplicativo agora começa vazio se o localStorage estiver limpo.
             
-            // 3. Renderiza a interface
+            // 4. Renderiza a interface
             renderCredentials(); 
             
-            // 4. Adiciona os Event Listeners (usando as referências globais)
+            // 5. Adiciona os Event Listeners (filtros)
             filterTypeEl?.addEventListener('change', renderProcesses);
             filterStatusEl?.addEventListener('change', renderProcesses);
             searchQueryEl?.addEventListener('keyup', renderProcesses);
+            
+            // 6. ADICIONA EVENT LISTENER PARA VALIDAÇÃO EM TEMPO REAL
+            if (inputProcessNumberEl) {
+                inputProcessNumberEl.addEventListener('input', validateProcessNumber);
+            }
 
-            // 5. Renderização Inicial dos processos
+            // 7. Renderização Inicial dos processos
             if (processListContainer && noProcessesMessage) {
                 renderProcesses();
             } else {
